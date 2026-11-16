@@ -156,15 +156,17 @@ var LAND_LIMIT = 10;
 function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 function dist(a, b) { var dx = a.x - b.x, dz = a.z - b.z; return Math.sqrt(dx * dx + dz * dz); }
 
-//  The six things you can build: three domains, two sizes. Big ones carry four small ones.
-var CLASS_ORDER = ['seaC', 'sea', 'airC', 'air', 'landC', 'land'];
+//  The eight things you can build. The mothership carries a mixed load; the battleship carries nothing but guns.
+var CLASS_ORDER = ['mother', 'bship', 'sub', 'sea', 'airC', 'air', 'landC', 'land'];
 var CLASSES = {
-    seaC:  { name: 'Sea Carrier',   dom: 'sea',  big: true,  cost: 60, hp: 16, speed: 40,  range: 4300, cargoOf: ['sea', 'air'], blurb: 'Slow, tough, crosses the whole strait. Carries 4 small drones.' },
-    sea:   { name: 'Sea Drone',     dom: 'sea',  big: false, cost: 8,  hp: 3,  speed: 55,  range: 1500, blurb: 'Small boat. Short range. The only thing that hears undersea drones.' },
-    airC:  { name: 'Air Carrier',   dom: 'air',  big: true,  cost: 55, hp: 9,  speed: 100, range: 4700, cargoOf: ['air'], blurb: 'Fast, fragile, reaches the far coast. Carries 4 air drones.' },
-    air:   { name: 'Air Drone',     dom: 'air',  big: false, cost: 6,  hp: 2,  speed: 135, range: 1300, blurb: 'Small, quick, short range.' },
-    landC: { name: 'Launch Truck',  dom: 'land', big: true,  cost: 35, hp: 10, speed: 45,  range: 0, cargoOf: ['air', 'land'], blurb: 'Drives the coast road only. Long reach out to sea. Carries 4 drones.' },
-    land:  { name: 'Beach Crawler', dom: 'land', big: false, cost: 5,  hp: 4,  speed: 32,  range: 0, blurb: 'Last line on the sand. Shoots what gets close to shore.' }
+    mother: { name: 'Mothership',    dom: 'sea',  big: true,  cost: 70, hp: 22, speed: 34,  range: 4300, cargoN: 6, cargoOf: ['sub', 'sea', 'air'], mixed: true, blurb: 'Slow and tough, crosses the whole strait. Carries six small drones in any mix of sub, surface and air.' },
+    bship:  { name: 'Battleship',    dom: 'sea',  big: true,  cost: 120, hp: 36, speed: 30,  range: 4300, blurb: 'Stands alone. No drones, only guns: main battery against ships whatever else you fit it for.' },
+    sub:    { name: 'Sub Drone',     dom: 'sub',  big: false, cost: 13,  hp: 3,  speed: 46,  range: 1700, blurb: 'Runs under the surface. Escort guns and strike UAVs cannot touch it; only undersea drones can.' },
+    sea:    { name: 'Surface Drone', dom: 'sea',  big: false, cost: 8,  hp: 3,  speed: 58,  range: 1500, blurb: 'Small fast boat. Short range. Hears undersea drones.' },
+    airC:   { name: 'Air Carrier',   dom: 'air',  big: true,  cost: 55, hp: 9,  speed: 100, range: 4700, cargoN: 4, cargoOf: ['air'], blurb: 'Fast, fragile, reaches the far coast. Carries 4 air drones.' },
+    air:    { name: 'Air Drone',     dom: 'air',  big: false, cost: 6,  hp: 2,  speed: 135, range: 1300, blurb: 'Small, quick, short range.' },
+    landC:  { name: 'Launch Truck',  dom: 'land', big: true,  cost: 35, hp: 10, speed: 45,  range: 0, cargoN: 4, cargoOf: ['air', 'land'], blurb: 'Drives the coast road only. Long reach out to sea. Carries 4 drones.' },
+    land:   { name: 'Beach Crawler', dom: 'land', big: false, cost: 5,  hp: 4,  speed: 32,  range: 0, blurb: 'Last line on the sand. Shoots what gets close to shore.' }
 };
 
 //  One big choice per unit: what is it for? Colour always means role.
@@ -188,21 +190,24 @@ var TARGETS = [['landing', 'Landing ships', 'Ignores escorts if a landing ship i
 
 function defaultTemplates() {
     return {
-        seaC:  { role: 'scout',  fit: 'radar',       stance: 'hold',   target: 'landing', cargo: 'sea' },
-        sea:   { role: 'strike', fit: 'heavy',       stance: 'push',   target: 'landing' },
-        airC:  { role: 'strike', fit: 'swarm',       stance: 'hold',   target: 'escort',  cargo: 'air' },
-        air:   { role: 'defend', fit: 'gun',         stance: 'push',   target: 'near' },
-        landC: { role: 'defend', fit: 'interceptor', stance: 'hold',   target: 'near',    cargo: 'air' },
-        land:  { role: 'strike', fit: 'heavy',       stance: 'hold',   target: 'landing' }
+        mother: { role: 'scout',  fit: 'radar',       stance: 'hold',   target: 'landing', cargo: ['sub', 'sub', 'sea', 'sea', 'air', 'air'] },
+        bship:  { role: 'strike', fit: 'heavy',       stance: 'hold',   target: 'landing' },
+        sub:    { role: 'strike', fit: 'heavy',       stance: 'push',   target: 'landing' },
+        sea:    { role: 'strike', fit: 'swarm',       stance: 'push',   target: 'escort' },
+        airC:   { role: 'strike', fit: 'swarm',       stance: 'hold',   target: 'escort',  cargo: ['air', 'air', 'air', 'air'] },
+        air:    { role: 'defend', fit: 'gun',         stance: 'push',   target: 'near' },
+        landC:  { role: 'defend', fit: 'interceptor', stance: 'hold',   target: 'near',    cargo: ['air', 'air', 'air', 'air'] },
+        land:   { role: 'strike', fit: 'heavy',       stance: 'hold',   target: 'landing' }
     };
 }
 function fitExtra(role, fit) {
     for (var i = 0; i < FITS[role].length; i++) { if (FITS[role][i][0] === fit) { return FITS[role][i][3]; } }
     return 0;
 }
+function smallCost(cls, t) { return CLASSES[cls].cost + fitExtra(t.role, t.fit); }
 function unitCost(cls, tpls) {
     var c = CLASSES[cls], t = tpls[cls], cost = c.cost + fitExtra(t.role, t.fit) * (c.big ? 3 : 1);
-    if (c.big) { cost += 4 * unitCost(t.cargo, tpls); }
+    if (c.cargoN) { for (var i = 0; i < t.cargo.length; i++) { cost += smallCost(t.cargo[i], tpls[t.cargo[i]]); } }
     return cost;
 }
 
@@ -244,8 +249,8 @@ function unitSpec(cls, role, fit) {
         if (!big && c.dom !== 'land') { s.mode = 'ram'; s.dmg = fit === 'heavy' ? 9 : 4; if (fit === 'heavy') { s.speed *= 0.8; } }
         else {
             s.mode = 'battery';
-            s.range = cls === 'landC' ? 780 : cls === 'land' ? 420 : cls === 'airC' ? 600 : 700;
-            s.dmg = (fit === 'heavy' ? 6 : 1.5) * (big ? 1 : 0.6); s.reload = fit === 'heavy' ? 4.5 : 1.1;
+            s.range = cls === 'landC' ? 780 : cls === 'land' ? 420 : cls === 'airC' ? 600 : cls === 'bship' ? 950 : 700;
+            s.dmg = (fit === 'heavy' ? 6 : 1.5) * (big ? 1 : 0.6) * (cls === 'bship' ? 1.25 : 1); s.reload = fit === 'heavy' ? 4.5 : 1.1;
         }
     } else if (role === 'defend') {
         s.mode = 'guard';
@@ -271,6 +276,8 @@ function Sim() {
     this.phase = -1;
     this.nextWave = PHASES[0].prep;
     this.weather = PHASES[0].weather;
+    //  Each round is one day: sunrise as you prepare, daylight for the fight, sunset as it ends.
+    this.dayIndex = 0; this.dayStart = 0; this.dayLen = PHASES[0].prep + WAVE_GAP;
     this.units = [];
     this.enemies = [];
     this.events = [];       //  things that just happened, for effects and the log
@@ -309,7 +316,7 @@ Sim.prototype.makeUnit = function(cls, tpl, x, z) {
     var c = CLASSES[cls], spec = unitSpec(cls, tpl.role, tpl.fit);
     var u = { id: this.nextId++, side: 0, cls: cls, dom: c.dom, big: c.big, role: tpl.role, fit: tpl.fit, stance: tpl.stance, target: tpl.target,
         spec: spec, x: x, z: z, hp: spec.hp, maxHp: spec.hp, dest: { x: x, z: z }, leader: null, slot: 0, cargo: 0, cargoCls: null, cargoTpl: null,
-        cool: 0, tgt: null, contact: true, why: '', slaved: false, rtb: false, dead: false, kills: 0, value: 0, releaseT: 0, heading: 0, doing: 'Launching.' };
+        cool: 0, cool2: 0, cargoList: [], tgt: null, contact: true, why: '', slaved: false, rtb: false, dead: false, kills: 0, value: 0, releaseT: 0, heading: 0, doing: 'Launching.' };
     this.rec.meta[u.id] = { side: 0, kind: cls, role: u.role, fit: u.fit, stance: u.stance };
     this.units.push(u);
     return u;
@@ -321,10 +328,13 @@ Sim.prototype.buy = function(cls, x, z) {
     if (this.over) { return null; }
     if (cost > this.credits) { this.emit({ k: 'msg', text: 'Not enough credits for a ' + c.name + ' (' + cost + ').', bad: true }); return null; }
     this.credits -= cost;
-    var u = this.makeUnit(cls, t, BASE.x + (Math.random() * 60 - 30), c.dom === 'land' ? -40 : c.dom === 'sea' ? 20 : -120);
+    var u = this.makeUnit(cls, t, BASE.x + (Math.random() * 60 - 30), c.dom === 'land' ? -40 : c.dom === 'air' ? -120 : 20);
     u.value = cost;
     u.dest = this.clampDest(cls, x, z);
-    if (c.big) { u.cargo = 4; u.cargoCls = t.cargo; u.cargoTpl = JSON.parse(JSON.stringify(this.templates[t.cargo])); }
+    if (c.cargoN) {
+        for (var i = 0; i < t.cargo.length; i++) { u.cargoList.push({ cls: t.cargo[i], tpl: JSON.parse(JSON.stringify(this.templates[t.cargo[i]])) }); }
+        u.cargo = u.cargoList.length;
+    }
     this.stats[cls].built++; this.stats[cls].spent += cost;
     this.emit({ k: 'msg', text: c.name + ' launched (' + ROLES[t.role].name + ').' });
     return u;
@@ -343,6 +353,7 @@ Sim.prototype.recall = function(u) {
     u.rtb = true;
     return true;
 };
+Sim.prototype.dayFrac = function() { return clamp((this.time - this.dayStart) / this.dayLen, 0, 1); };
 Sim.prototype.sendNow = function() { if (this.phase < PHASES.length - 1) { this.nextWave = this.time; } };
 
 Sim.prototype.spawnWave = function(p) {
@@ -421,7 +432,8 @@ Sim.prototype.pickEnemy = function(u, cx, cz, radius, wantShips) {
     for (var i = 0; i < this.enemies.length; i++) {
         var e = this.enemies[i];
         if (e.dead || e.det < 1) { continue; }
-        if (e.dom === 'sub' && u.dom !== 'sea') { continue; }
+        if (e.dom === 'sub' && u.dom !== 'sea' && u.dom !== 'sub') { continue; }
+        if (u.dom === 'sub' && e.dom === 'air') { continue; }
         if (wantShips ? e.dom === 'air' : (e.dom === 'sea')) { continue; }
         if (dist(e, c) > radius) { continue; }
         var score = dist(e, u);
@@ -454,7 +466,7 @@ Sim.prototype.updateUnit = function(u, dt) {
 
     //  Station: beside the carrier it belongs to, beside the nearest carrier, or where it was sent.
     if (u.leader) {
-        var a = u.slot * Math.PI / 2 + 0.6;
+        var a = u.slot * Math.PI / 3 + 0.6;
         ax = u.leader.x + Math.sin(a) * 95; az = u.leader.z + Math.cos(a) * 95;
         if (u.leader.rtb) { u.rtb = true; }
     } else if (u.stance === 'escort' && !u.big) {
@@ -479,12 +491,13 @@ Sim.prototype.updateUnit = function(u, dt) {
             u.releaseT -= dt;
             if (u.releaseT <= 0) {
                 u.releaseT = 0.7;
-                var kid = this.makeUnit(u.cargoCls, u.cargoTpl, u.x, CLASSES[u.cargoCls].dom === 'land' ? -30 : u.z);
-                kid.leader = u; kid.slot = 4 - u.cargo; kid.slaved = true; kid.value = unitCost(u.cargoCls, { sea: u.cargoTpl, air: u.cargoTpl, land: u.cargoTpl });
+                var load = u.cargoList.shift(), kc = CLASSES[load.cls];
+                var kid = this.makeUnit(load.cls, load.tpl, u.x, kc.dom === 'land' ? -30 : u.z);
+                kid.leader = u; kid.slot = u.cargo; kid.slaved = true; kid.value = smallCost(load.cls, load.tpl);
                 //  A land drone dropped by a truck works the beach by itself.
                 if (kid.dom === 'land') { kid.leader = null; kid.dest = { x: u.x + (kid.slot - 1.5) * 60, z: -25 }; }
                 u.cargo--;
-                this.stats[u.cargoCls].built++;
+                this.stats[load.cls].built++;
                 this.emit({ k: 'release', x: u.x, z: u.z });
             }
         }
@@ -528,6 +541,17 @@ Sim.prototype.updateUnit = function(u, dt) {
     } else if (u.role === 'scout') { u.doing = 'Watching and relaying.'; }
     else { u.doing = s.jam ? 'Jamming.' : 'Drawing fire.'; }
 
+    //  The battleship's main battery works against ships whatever role it is fitted for.
+    if (u.cls === 'bship' && s.mode !== 'battery') {
+        u.cool2 -= dt;
+        e = this.pickEnemy(u, u.x, u.z, 850, true);
+        if (e && u.cool2 <= 0) {
+            u.cool2 = 3.2;
+            this.emit({ k: 'shot', x: u.x, z: u.z, tx: e.x, tz: e.z, hit: e.det === 2 || Math.random() < 0.5, side: 0 });
+            if (e.det === 2 || Math.random() < 0.5) { this.hitEnemy(e, 4, u); }
+            u.doing = 'Firing main battery.';
+        }
+    }
     this.moveTo(u, gx, gz, s.speed, dt);
 };
 
@@ -549,7 +573,7 @@ Sim.prototype.updateEnemy = function(e, dt) {
     var u, T = ETYPES[e.et];
     e.cool -= dt;
     if (e.et === 'uav' || e.et === 'sub') {
-        u = e.et === 'sub' ? this.pickUnit(e, 1200, function(o) { return o.dom === 'sea'; }) : this.pickUnit(e, 1000, function(o) { return true; });
+        u = e.et === 'sub' ? this.pickUnit(e, 1200, function(o) { return o.dom === 'sea' || o.dom === 'sub'; }) : this.pickUnit(e, 1000, function(o) { return o.dom !== 'sub'; });
         if (u) {
             if (this.moveTo(e, u.x, u.z, e.speed * 1.15, dt) < 14) {
                 e.dead = true;
@@ -572,7 +596,7 @@ Sim.prototype.updateEnemy = function(e, dt) {
     if (e.et === 'escort' || e.et === 'lhd') {
         var range = e.et === 'escort' ? 420 : 320;
         if (e.cool <= 0) {
-            u = this.pickUnit(e, range, function(o) { return e.et === 'escort' || o.dom === 'air'; });
+            u = this.pickUnit(e, range, function(o) { return e.et === 'escort' ? o.dom !== 'sub' : o.dom === 'air'; });
             if (u) {
                 e.cool = e.et === 'escort' ? 1.3 : 1.0;
                 var ok = Math.random() < (this.inFriendlyJam(u) ? 0.2 : 0.6);
@@ -598,7 +622,7 @@ Sim.prototype.sense = function(dt) {
         if (e.dom !== 'sub' && dist(e, BASE) < BASE_RADAR * W.sensor) { best = 1; }
         for (j = 0; j < this.units.length && best < 2; j++) {
             u = this.units[j];
-            if (u.dead || (e.dom === 'sub' && u.dom !== 'sea')) { continue; }
+            if (u.dead || (e.dom === 'sub' && u.dom !== 'sea' && u.dom !== 'sub')) { continue; }
             d = dist(e, u);
             var sr = u.spec.sensor * W.sensor;
             if (d < sr) { best = 2; } else if (d < sr * 1.8) { best = Math.max(best, 1); }
@@ -648,6 +672,11 @@ Sim.prototype.step = function(dt) {
     }
     //  The weather turns to the next phase's forecast halfway through the countdown.
     var nextP = Math.min(PHASES.length - 1, this.phase + 1);
+    //  A new day dawns when the countdown to the next wave begins.
+    if (this.phase >= 0 && this.phase < PHASES.length - 1 && this.dayIndex <= this.phase && this.time >= this.nextWave - PHASES[nextP].prep) {
+        this.dayIndex = this.phase + 1; this.dayStart = this.time; this.dayLen = PHASES[nextP].prep + WAVE_GAP;
+        this.emit({ k: 'msg', text: 'Day ' + (this.dayIndex + 1) + ' dawns.' });
+    }
     var turning = this.phase < 0 || this.time > this.nextWave - PHASES[nextP].prep * 0.5;
     var wantWeather = PHASES[turning ? nextP : this.phase].weather;
     if (wantWeather !== this.weather) { this.weather = wantWeather; this.emit({ k: 'msg', text: 'Weather: ' + WEATHER[wantWeather].name + '. ' + WEATHER[wantWeather].note }); }
@@ -677,11 +706,11 @@ Sim.prototype.finish = function(result, text) {
 
 //  One frame of the replay: where everything was, and what happened since the last frame.
 Sim.prototype.snapshot = function() {
-    var f = { t: this.time, u: [], e: [], ev: this.recEv, landed: this.landed, beach: this.beachHp.slice(), credits: this.credits, weather: this.weather, phase: this.phase,
+    var f = { t: this.time, u: [], e: [], ev: this.recEv, landed: this.landed, beach: this.beachHp.slice(), credits: this.credits, weather: this.weather, phase: this.phase, day: +this.dayFrac().toFixed(3), dayN: this.dayIndex,
         lost: this.lostValue, sunk: this.sunkValue }, i, o;
     for (i = 0; i < this.units.length; i++) {
         o = this.units[i];
-        f.u.push([o.id, Math.round(o.x), Math.round(o.z), +(o.hp / o.maxHp).toFixed(2), (o.contact ? 1 : 0) + (o.slaved ? 2 : 0) + (o.jammed ? 4 : 0), o.cargo, +o.heading.toFixed(2)]);
+        f.u.push([o.id, Math.round(o.x), Math.round(o.z), +(o.hp / o.maxHp).toFixed(2), (o.contact ? 1 : 0) + (o.slaved ? 2 : 0) + (o.jammed ? 4 : 0) + (/^(Firing|Engaging|Attacking)/.test(o.doing) ? 8 : 0), o.cargo, +o.heading.toFixed(2)]);
     }
     for (i = 0; i < this.enemies.length; i++) {
         o = this.enemies[i];
@@ -694,23 +723,33 @@ Sim.prototype.snapshot = function() {
 /* ==================================================================
     PART 2: THE VIEW
     You stand on Taiwan's west coast looking out over the strait.
-    Zoom in to your base, zoom out until the far coast shows on a
-    clear day. Far away, pieces are flat board-game counters; up
-    close they are models whose parts show every choice you made.
+    Drawn like a cel-animated film: flat colour, hard-stepped light,
+    ink outlines. Each round is one day: sunrise behind you, clear
+    daylight, then the sun setting over the far coast.
+    Far away, pieces are flat counters; up close they are models
+    whose parts show every choice you made.
    ================================================================== */
 
-var ENEMY_RED = 0xd8392c;
+var INK = 0x14181c;
+//  The day: [fraction, sky, sea, ambient colour, ambient strength, sun colour, sun strength]
+var DAY_KEYS = [
+    [0.00, 0xf7b89a, 0x5a6fa3, 0xcdb4d8, 0.55, 0xffc9a0, 0.75],
+    [0.20, 0xbfd9e8, 0x3f8fb0, 0xffffff, 0.48, 0xfff3d0, 0.90],
+    [0.72, 0xbfd9e8, 0x3f8fb0, 0xffffff, 0.48, 0xfff3d0, 0.90],
+    [1.00, 0xf2a25c, 0x3b2f66, 0xa894d6, 0.50, 0xffb070, 0.95]
+];
+//  Weather pulls the colours towards grey: [grey sky, how much, how dark]
+var WEATHER_LOOK = { clear: [0xbfd9e8, 0, 0], haze: [0xc4ced2, 0.3, 0.05], fog: [0xd3d8d8, 0.65, 0.12], rain: [0x66737c, 0.6, 0.35], storm: [0x404a52, 0.78, 0.5] };
 
 function View3D(canvas) {
-    var T = THREE, i, self = this;
+    var T = THREE, i;
     this.canvas = canvas;
     this.r = new T.WebGLRenderer({ canvas: canvas, antialias: true });
-    this.r.outputEncoding = T.sRGBEncoding;
     this.scene = new T.Scene();
-    this.sky = new T.Color(0x7fa6c2);
+    this.sky = new T.Color(0xbfd9e8);
     this.scene.background = this.sky;
-    this.scene.fog = new T.Fog(0x7fa6c2, 2000, 9000);
-    this.cam = new T.PerspectiveCamera(45, 1.6, 4, 40000);
+    this.scene.fog = new T.Fog(0xbfd9e8, 2000, 9000);
+    this.cam = new T.PerspectiveCamera(45, 1.6, 4, 60000);
     this.zoom = 0.62;
     this.target = new T.Vector3(0, 0, 420);
     this.w = 800; this.h = 500; this.ui = 1;
@@ -719,114 +758,131 @@ function View3D(canvas) {
     this.ents = {};
     this.frame = 0;
     this.fxList = [];
-    this.weather = { vis: 9000, rain: 0, dark: 0, sky: new T.Color(0x7fa6c2) };
-    this.want = { vis: 9000, rain: 0, dark: 0, sky: new T.Color(0x7fa6c2) };
+    this.labels = [];
+    this.day = 0.1;
+    this.weather = { vis: 9000, rain: 0, grey: new T.Color(0xbfd9e8), mix: 0, dark: 0 };
+    this.want = { vis: 9000, rain: 0, grey: new T.Color(0xbfd9e8), mix: 0, dark: 0 };
     this.texCache = {};
+    this.tmpA = new T.Color(); this.tmpB = new T.Color();
 
-    //  Light: an overcast day with a low warm sun behind you, so the pieces read clearly.
-    this.hemi = new T.HemisphereLight(0xcfe3f2, 0x24303a, 0.95); this.scene.add(this.hemi);
-    this.sun = new T.DirectionalLight(0xfff0d8, 0.9); this.sun.position.set(-900, 1400, -1600); this.scene.add(this.sun);
+    this.amb = new T.AmbientLight(0xffffff, 0.5); this.scene.add(this.amb);
+    this.sun = new T.DirectionalLight(0xfff3d0, 0.9); this.scene.add(this.sun);
 
-    //  Materials. Grey plastic for your hulls, red for theirs, and one colour per role.
+    //  Cel shading: light falls in three hard steps.
+    var steps = new Uint8Array([95, 95, 95, 175, 175, 175, 255, 255, 255]);
+    this.grad = new T.DataTexture(steps, 3, 1, T.RGBFormat); this.grad.minFilter = this.grad.magFilter = T.NearestFilter; this.grad.needsUpdate = true;
+    this.ink = new T.MeshBasicMaterial({ color: INK, side: T.BackSide });
     this.mat = {
-        hull: new T.MeshStandardMaterial({ color: 0xa3adb3, roughness: 0.55, metalness: 0.15 }),
-        deck: new T.MeshStandardMaterial({ color: 0x2c3438, roughness: 0.8 }),
-        red: new T.MeshStandardMaterial({ color: ENEMY_RED, roughness: 0.55, metalness: 0.1 }),
-        redDark: new T.MeshStandardMaterial({ color: 0x5c1d18, roughness: 0.7 }),
-        sub: new T.MeshStandardMaterial({ color: 0x3a1512, roughness: 0.4, transparent: true, opacity: 0.8 }),
-        white: new T.MeshBasicMaterial({ color: 0xffffff }),
+        hull: this.toon(0xb9c4cc), deck: this.toon(0x56636d), red: this.toon(0xd94a3a), redDark: this.toon(0x7d2a22), sub: this.toon(0x5a2420),
+        hazard: this.toon(0xf5c518), white: new T.MeshBasicMaterial({ color: 0xffffff }),
+        foam: new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, depthWrite: false }),
         peg: { push: new T.MeshBasicMaterial({ color: 0xff7a3c }), hold: new T.MeshBasicMaterial({ color: 0xffffff }), escort: new T.MeshBasicMaterial({ color: 0x4be07f }) },
         role: {}
     };
-    for (i = 0; i < ROLE_ORDER.length; i++) {
-        var rc = new T.Color(ROLES[ROLE_ORDER[i]].color);
-        this.mat.role[ROLE_ORDER[i]] = new T.MeshStandardMaterial({ color: rc, emissive: rc.clone().multiplyScalar(0.35), roughness: 0.45 });
-    }
+    for (i = 0; i < ROLE_ORDER.length; i++) { this.mat.role[ROLE_ORDER[i]] = this.toon(new T.Color(ROLES[ROLE_ORDER[i]].color).getHex()); }
 
-    //  Sea, with a board-game grid.
-    var sea = new T.Mesh(new T.PlaneGeometry(60000, 60000), new T.MeshStandardMaterial({ color: 0x0d3b4c, roughness: 0.32, metalness: 0.55 }));
-    sea.rotation.x = -Math.PI / 2; sea.position.y = -0.5; this.scene.add(sea);
+    //  Sea: one flat colour, a board-game grid, and drawn wave strokes that follow the camera.
+    this.seaMat = new T.MeshBasicMaterial({ color: 0x3f8fb0 });
+    var sea = new T.Mesh(new T.PlaneGeometry(90000, 90000), this.seaMat); sea.rotation.x = -Math.PI / 2; sea.position.y = -0.5; this.scene.add(sea);
     var gp = [];
     for (i = WORLD.x0; i <= WORLD.x1; i += 425) { gp.push(i, 0.3, 0, i, 0.3, WORLD.far); }
     for (i = 0; i <= WORLD.far; i += 520) { gp.push(WORLD.x0, 0.3, i, WORLD.x1, 0.3, i); }
     var gg = new T.BufferGeometry(); gg.setAttribute('position', new T.Float32BufferAttribute(gp, 3));
-    this.scene.add(new T.LineSegments(gg, new T.LineBasicMaterial({ color: 0x9fd6e6, transparent: true, opacity: 0.2 })));
+    this.scene.add(new T.LineSegments(gg, new T.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.16 })));
+    this.waves = [];
+    for (i = 0; i < 46; i++) {
+        var wv = new T.Mesh(new T.PlaneGeometry(1, 1), this.mat.foam); wv.rotation.x = -Math.PI / 2;
+        wv.userData = { u: ((i * 0.618) % 1) * 2 - 1, v: ((i * 0.381) % 1) * 2 - 1, len: 0.6 + ((i * 7) % 5) * 0.2 };
+        this.scene.add(wv); this.waves.push(wv);
+    }
 
     //  Taiwan: coast, three beaches, hills, and your base in the middle.
-    var green = new T.MeshStandardMaterial({ color: 0x24402c, roughness: 0.95 }), sand = new T.MeshStandardMaterial({ color: 0xd9c79a, roughness: 0.9 });
-    var conc = new T.MeshStandardMaterial({ color: 0x555d61, roughness: 0.85 });
-    this.add(this.box(14000, 10, 5000, green), 0, 0, -2500);
+    var green = this.toon(0x7fa38a), greenDark = this.toon(0x5f8a72), sand = this.toon(0xead9a8), conc = this.toon(0x9aa3aa);
+    this.add(this.box(16000, 10, 6000, green), 0, 0, -3000, null, true);
     for (i = 0; i < 3; i++) {
-        this.add(this.box(720, 11, 70, sand), BEACHES[i].x, 0.6, -30);
-        var lab = this.label(BEACHES[i].name, '#ffffff'); lab.position.set(BEACHES[i].x, 30, -150); this.scene.add(lab); this.labels = this.labels || []; this.labels.push(lab);
+        this.add(this.box(720, 11, 70, sand), BEACHES[i].x, 0.6, -30, null, true);
+        var lab = this.label(BEACHES[i].name); lab.position.set(BEACHES[i].x, 30, -150); this.scene.add(lab); this.labels.push(lab);
     }
     for (i = 0; i < 26; i++) {
-        var hh = 220 + ((i * 97) % 520), hill = new T.Mesh(new T.ConeGeometry(hh * 1.3, hh, 7), green);
-        this.add(hill, -6500 + i * 520 + ((i * 53) % 200), hh / 2, -900 - ((i * 131) % 1400));
+        var hh = 240 + ((i * 97) % 520);
+        this.add(new T.Mesh(new T.ConeGeometry(hh * 1.25, hh, 6), i % 3 ? green : greenDark), -6500 + i * 520 + ((i * 53) % 200), hh / 2, -900 - ((i * 131) % 1400));
     }
     this.add(this.box(340, 11.5, 150, conc), BASE.x, 0.5, BASE.z - 30);
     this.add(this.box(26, 5, 190, conc), BASE.x + 60, 2, 70);
     for (i = 0; i < 3; i++) {
-        this.add(this.box(70, 26, 50, this.mat.hull), BASE.x + [-175, -90, 105][i], 19, BASE.z - 70);
-        var roof = new T.Mesh(new T.CylinderGeometry(25, 25, 70, 14, 1, false, 0, Math.PI), this.mat.deck); roof.rotation.z = Math.PI / 2; roof.rotation.y = Math.PI / 2;
-        this.add(roof, BASE.x + [-175, -90, 105][i], 32, BASE.z - 70);
+        var hx = BASE.x + [-175, -90, 105][i];
+        this.add(this.box(70, 26, 50, this.mat.hull), hx, 19, BASE.z - 70);
+        var roof = new T.Mesh(new T.CylinderGeometry(25, 25, 70, 12, 1, false, 0, Math.PI), this.mat.deck); roof.rotation.z = Math.PI / 2; roof.rotation.y = Math.PI / 2;
+        this.add(roof, hx, 32, BASE.z - 70);
+        this.add(this.box(40, 18, 2, this.mat.hazard), hx, 15, BASE.z - 44, null, true);
     }
     this.add(this.cyl(3, 4, 60, conc), BASE.x + 140, 36, BASE.z - 40);
-    this.dish = new T.Mesh(new T.ConeGeometry(16, 10, 16, 1, true), this.mat.white); this.dish.rotation.z = Math.PI / 2; this.add(this.dish, BASE.x + 140, 70, BASE.z - 40);
+    this.dish = new T.Mesh(new T.CylinderGeometry(16, 5, 7, 14), this.mat.role.scout); this.dish.rotation.z = Math.PI / 2.4; this.add(this.dish, BASE.x + 140, 72, BASE.z - 40);
 
-    //  The far coast.
-    var far = new T.MeshStandardMaterial({ color: 0x3a3430, roughness: 1 });
-    this.add(this.box(16000, 14, 5000, far), 0, 0, WORLD.far + 2500);
-    for (i = 0; i < 22; i++) {
-        var fh = 160 + ((i * 71) % 360);
-        this.add(new T.Mesh(new T.ConeGeometry(fh * 1.6, fh, 6), far), -6800 + i * 640, fh / 2, WORLD.far + 500 + ((i * 89) % 900));
+    //  The far coast: flat silhouettes, and the sun that sets behind them.
+    var far = this.toon(0x8d93a6);
+    this.add(this.box(18000, 14, 6000, far), 0, 0, WORLD.far + 3000, null, true);
+    for (i = 0; i < 24; i++) {
+        var fh = 180 + ((i * 71) % 380);
+        this.add(new T.Mesh(new T.ConeGeometry(fh * 1.6, fh, 5), far), -7400 + i * 640, fh / 2, WORLD.far + 500 + ((i * 89) % 900), null, true);
     }
+    this.sunDisc = new T.Mesh(new T.CircleGeometry(900, 40), new T.MeshBasicMaterial({ color: 0xfff3d0, fog: false, side: T.DoubleSide }));
+    this.scene.add(this.sunDisc);
 
     //  Rings on the water: your command link, and the selection.
-    this.linkRing = this.circle(1, 0x45d9ff, 0.85); this.scene.add(this.linkRing);
-    this.selRing = this.circle(1, 0xffffff, 1); this.scene.add(this.selRing);
-    this.sensRing = this.circle(1, 0xffd23a, 0.7); this.scene.add(this.sensRing);
-    this.wpnRing = this.circle(1, 0xff5a36, 0.8); this.scene.add(this.wpnRing);
-    this.relayRing = this.circle(1, 0x45d9ff, 0.6); this.scene.add(this.relayRing);
-    this.rangeRing = this.circle(1, 0xffffff, 0.55); this.scene.add(this.rangeRing);
-    this.ghost = new T.Mesh(new T.RingGeometry(26, 34, 32), new T.MeshBasicMaterial({ color: 0xffffff, side: T.DoubleSide, transparent: true, opacity: 0.9, fog: false }));
+    this.linkRing = this.circle(0x2ad4ff, 0.95); this.selRing = this.circle(0xffffff, 1); this.sensRing = this.circle(0xf5c518, 0.85);
+    this.wpnRing = this.circle(0xe5412d, 0.9); this.relayRing = this.circle(0x2ad4ff, 0.7); this.rangeRing = this.circle(0xffffff, 0.7);
+    this.ghost = new T.Mesh(new T.RingGeometry(26, 36, 32), new T.MeshBasicMaterial({ color: 0xffffff, side: T.DoubleSide, transparent: true, opacity: 0.95, fog: false }));
     this.ghost.rotation.x = -Math.PI / 2; this.scene.add(this.ghost);
     var lg = new T.BufferGeometry(); lg.setAttribute('position', new T.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
-    this.destLine = new T.Line(lg, new T.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, fog: false })); this.destLine.frustumCulled = false; this.scene.add(this.destLine);
+    this.destLine = new T.Line(lg, new T.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, fog: false })); this.destLine.frustumCulled = false; this.scene.add(this.destLine);
     this.jamDiscs = [];
 
     //  Rain.
     var rp = [];
     for (i = 0; i < 1400; i++) { rp.push(Math.random() * 3000 - 1500, Math.random() * 1400, Math.random() * 3000 - 1500); }
     var rg = new T.BufferGeometry(); rg.setAttribute('position', new T.Float32BufferAttribute(rp, 3));
-    this.rain = new T.Points(rg, new T.PointsMaterial({ color: 0xcfe6f2, size: 5, transparent: true, opacity: 0 })); this.rain.frustumCulled = false; this.scene.add(this.rain);
+    this.rain = new T.Points(rg, new T.PointsMaterial({ color: 0xffffff, size: 5, transparent: true, opacity: 0 })); this.rain.frustumCulled = false; this.scene.add(this.rain);
 
-    this.glow = this.glowTex();
+    this.starTex = this.burstTex(true); this.splashTex = this.burstTex(false);
     this.placeCam();
 }
 
+View3D.prototype.toon = function(color) { return new THREE.MeshToonMaterial({ color: color, gradientMap: this.grad }); };
 View3D.prototype.box = function(w, h, d, m) { return new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); };
-View3D.prototype.cyl = function(r1, r2, h, m, seg) { return new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg || 12), m); };
-View3D.prototype.add = function(m, x, y, z, parent) { m.position.set(x, y, z); (parent || this.scene).add(m); return m; };
-View3D.prototype.circle = function(r, color, opacity) {
+View3D.prototype.cyl = function(r1, r2, h, m, seg) { return new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, seg || 10), m); };
+//  Place a solid, and give it an ink outline: a slightly larger copy drawn inside-out.
+View3D.prototype.add = function(m, x, y, z, parent, noLine) {
+    m.position.set(x, y, z); (parent || this.scene).add(m);
+    if (!noLine && m.isMesh) { var o = new THREE.Mesh(m.geometry, this.ink); o.scale.setScalar(1.08); m.add(o); }
+    return m;
+};
+View3D.prototype.circle = function(color, opacity) {
     var pts = [], i;
-    for (i = 0; i <= 96; i++) { pts.push(Math.sin(i / 96 * Math.PI * 2) * r, 0, Math.cos(i / 96 * Math.PI * 2) * r); }
+    for (i = 0; i <= 96; i++) { pts.push(Math.sin(i / 96 * Math.PI * 2), 0, Math.cos(i / 96 * Math.PI * 2)); }
     var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
     var l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: opacity, fog: false }));
-    l.position.y = 1.2; l.visible = false; l.frustumCulled = false;
+    l.position.y = 1.2; l.visible = false; l.frustumCulled = false; this.scene.add(l);
     return l;
 };
-View3D.prototype.glowTex = function() {
-    var c = document.createElement('canvas'); c.width = c.height = 64;
-    var g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.3, 'rgba(255,255,255,0.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-    g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+//  Comic-book burst for a hit (red and yellow star) or a miss (white splash ring).
+View3D.prototype.burstTex = function(hit) {
+    var c = document.createElement('canvas'); c.width = c.height = 128;
+    var g = c.getContext('2d'), i;
+    g.translate(64, 64); g.lineJoin = 'round'; g.lineWidth = 6; g.strokeStyle = '#14181c';
+    if (hit) {
+        for (var pass = 0; pass < 2; pass++) {
+            g.beginPath();
+            for (i = 0; i < 20; i++) { var r = (i % 2 ? 26 : 56) * (pass ? 0.62 : 1), a = i * Math.PI / 10; if (i) { g.lineTo(Math.sin(a) * r, -Math.cos(a) * r); } else { g.moveTo(0, -r); } }
+            g.closePath(); g.fillStyle = pass ? '#fff2a8' : '#e5412d'; if (!pass) { g.stroke(); } g.fill();
+        }
+    } else { g.beginPath(); g.arc(0, 0, 40, 0, Math.PI * 2); g.stroke(); g.lineWidth = 10; g.strokeStyle = '#ffffff'; g.beginPath(); g.arc(0, 0, 40, 0, Math.PI * 2); g.stroke(); }
     return new THREE.CanvasTexture(c);
 };
-View3D.prototype.label = function(text, color) {
+View3D.prototype.label = function(text) {
     var c = document.createElement('canvas'); c.width = 256; c.height = 64;
     var g = c.getContext('2d'); g.font = '700 30px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, 8, 256, 48); g.fillStyle = color; g.fillText(text, 128, 33);
+    g.fillStyle = '#14181c'; g.fillRect(0, 8, 256, 48); g.fillStyle = '#ffffff'; g.fillText(text, 128, 33);
     return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false, fog: false }));
 };
 
@@ -837,11 +893,11 @@ View3D.prototype.iconTex = function(kind, color, enemy) {
     var c = document.createElement('canvas'); c.width = c.height = 64;
     var g = c.getContext('2d');
     g.translate(32, 32); if (enemy) { g.rotate(Math.PI); } g.translate(-32, -32);
-    g.fillStyle = color; g.strokeStyle = enemy ? '#3a0c08' : '#ffffff'; g.lineWidth = 4; g.lineJoin = 'round';
+    g.fillStyle = color; g.strokeStyle = '#14181c'; g.lineWidth = 5; g.lineJoin = 'round';
     g.beginPath();
     if (kind === 'unknown') { g.setTransform(1, 0, 0, 1, 0, 0); g.arc(32, 32, 20, 0, Math.PI * 2); }
     else if (kind === 'sea' || kind === 'escort') { g.moveTo(32, 6); g.lineTo(43, 24); g.lineTo(43, 56); g.lineTo(21, 56); g.lineTo(21, 24); }
-    else if (kind === 'seaC' || kind === 'jammer') { g.moveTo(32, 3); g.lineTo(47, 18); g.lineTo(47, 61); g.lineTo(17, 61); g.lineTo(17, 18); }
+    else if (kind === 'seaC' || kind === 'jammer' || kind === 'mother' || kind === 'bship') { g.moveTo(32, 3); g.lineTo(47, 18); g.lineTo(47, 61); g.lineTo(17, 61); g.lineTo(17, 18); }
     else if (kind === 'lst' || kind === 'lhd') { g.moveTo(14, 8); g.lineTo(50, 8); g.lineTo(50, 60); g.lineTo(14, 60); }
     else if (kind === 'air' || kind === 'uav') { g.moveTo(32, 6); g.lineTo(58, 52); g.lineTo(32, 42); g.lineTo(6, 52); }
     else if (kind === 'airC') { g.moveTo(32, 4); g.lineTo(62, 44); g.lineTo(40, 44); g.lineTo(40, 60); g.lineTo(24, 60); g.lineTo(24, 44); g.lineTo(2, 44); }
@@ -849,113 +905,93 @@ View3D.prototype.iconTex = function(kind, color, enemy) {
     else if (kind === 'landC') { g.rect(12, 4, 40, 56); }
     else { g.ellipse(32, 32, 12, 26, 0, 0, Math.PI * 2); }
     g.closePath(); g.fill(); g.stroke();
-    g.fillStyle = enemy ? '#3a0c08' : '#ffffff';
-    if (kind === 'unknown') { g.fillStyle = '#1b1f22'; g.font = '700 28px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 32, 34); }
+    g.fillStyle = enemy ? '#14181c' : '#ffffff';
+    if (kind === 'unknown') { g.fillStyle = '#14181c'; g.font = '700 28px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 32, 34); }
+    if (kind === 'bship') { g.beginPath(); g.arc(32, 26, 6, 0, 6.3); g.arc(32, 44, 6, 0, 6.3); g.fill(); }
+    if (kind === 'mother') { g.fillRect(24, 22, 5, 5); g.fillRect(35, 22, 5, 5); g.fillRect(24, 32, 5, 5); g.fillRect(35, 32, 5, 5); g.fillRect(24, 42, 5, 5); g.fillRect(35, 42, 5, 5); }
     if (kind === 'seaC' || kind === 'airC' || kind === 'landC') { g.fillRect(26, 26, 5, 5); g.fillRect(34, 26, 5, 5); g.fillRect(26, 36, 5, 5); g.fillRect(34, 36, 5, 5); }
-    if (kind === 'lst') { g.fillRect(20, 10, 24, 6); }
-    if (kind === 'lhd') { g.fillRect(20, 10, 24, 6); g.fillRect(40, 26, 6, 20); }
+    if (kind === 'lst') { g.fillStyle = '#f5c518'; g.fillRect(18, 12, 28, 6); }
+    if (kind === 'lhd') { g.fillStyle = '#f5c518'; g.fillRect(18, 12, 28, 6); g.fillRect(18, 22, 28, 6); g.fillRect(18, 32, 28, 6); }
     if (kind === 'jammer') { g.beginPath(); g.arc(32, 36, 9, 0, Math.PI * 2); g.lineWidth = 3; g.stroke(); }
-    if (kind === 'land' || kind === 'landC') { g.fillRect(8, 12, 5, 40); g.fillRect(51, 12, 5, 40); }
+    if (kind === 'land' || kind === 'landC') { g.fillStyle = '#14181c'; g.fillRect(7, 12, 6, 40); g.fillRect(51, 12, 6, 40); }
     var t = new THREE.CanvasTexture(c);
-    t.encoding = THREE.sRGBEncoding;
     this.texCache[key] = t;
     return t;
 };
-var ICON_PX = { seaC: 30, sea: 17, airC: 30, air: 17, landC: 26, land: 16, sub: 15, uav: 15, escort: 18, jammer: 26, lst: 26, lhd: 38, unknown: 15 };
-var MODEL_LEN = { seaC: 100, sea: 28, airC: 80, air: 22, landC: 44, land: 22, sub: 36, uav: 22, escort: 40, jammer: 64, lst: 84, lhd: 150 };
+var ICON_PX = { mother: 36, bship: 30, sea: 17, airC: 30, air: 17, landC: 26, land: 16, sub: 15, uav: 15, escort: 18, jammer: 26, lst: 26, lhd: 38, unknown: 15 };
+var MODEL_LEN = { mother: 180, bship: 104, sea: 30, airC: 118, air: 30, landC: 50, land: 26, sub: 36, uav: 30, escort: 46, jammer: 70, lst: 96, lhd: 160 };
 
 /* ---- Role modules: the part of a model that shows what it is for and how it is fitted. ---- */
 View3D.prototype.module = function(role, fit, s) {
     var T = THREE, g = new T.Group(), m = this.mat.role[role], p, k;
     if (role === 'strike') {
-        if (fit === 'heavy') { p = this.cyl(1.5 * s, 1.5 * s, 9 * s, m); p.rotation.x = -0.9; this.add(p, 0, 3 * s, 0, g); p = new T.Mesh(new T.ConeGeometry(1.5 * s, 3 * s, 12), this.mat.white); p.rotation.x = Math.PI / 2 - 0.9; this.add(p, 0, 6.6 * s, 4.6 * s, g); }
-        else { for (k = 0; k < 4; k++) { p = this.cyl(0.7 * s, 0.7 * s, 6 * s, m, 8); p.rotation.x = -0.9; this.add(p, (k % 2 ? 1.2 : -1.2) * s, (k < 2 ? 2.4 : 4) * s, 0, g); } }
+        if (fit === 'heavy') {
+            p = this.cyl(2.2 * s, 2.2 * s, 13 * s, m); p.rotation.x = Math.PI / 2 - 0.3; this.add(p, 0, 4 * s, 0, g);
+            p = new T.Mesh(new T.ConeGeometry(2.2 * s, 4.5 * s, 10), this.mat.white); p.rotation.x = Math.PI / 2 - 0.3; this.add(p, 0, 6.6 * s, 8.3 * s, g);
+        } else { for (k = 0; k < 4; k++) { p = this.cyl(1.1 * s, 1.1 * s, 8 * s, m, 8); p.rotation.x = Math.PI / 2 - 0.5; this.add(p, (k % 2 ? 1.7 : -1.7) * s, (k < 2 ? 3 : 5.4) * s, 0, g); } }
     } else if (role === 'defend') {
-        if (fit === 'gun') { this.add(new T.Mesh(new T.SphereGeometry(2.4 * s, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), m), 0, 0, 0, g); p = this.cyl(0.45 * s, 0.45 * s, 7 * s, this.mat.deck, 8); p.rotation.x = Math.PI / 2 - 0.3; this.add(p, 0, 2.4 * s, 3 * s, g); }
-        else { p = this.box(4.4 * s, 3 * s, 4.4 * s, m); p.rotation.x = -0.5; this.add(p, 0, 2.4 * s, 0, g); for (k = 0; k < 4; k++) { p = this.box(1.2 * s, 0.3 * s, 1.2 * s, this.mat.white); p.rotation.x = -0.5; this.add(p, (k % 2 ? 1 : -1) * s, (k < 2 ? 3.6 : 4.4) * s, (k < 2 ? 1.6 : 0.2) * s, g); } }
+        if (fit === 'gun') { this.add(new T.Mesh(new T.SphereGeometry(3.2 * s, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), m), 0, 0, 0, g); p = this.cyl(0.7 * s, 0.7 * s, 9 * s, this.mat.deck, 8); p.rotation.x = Math.PI / 2 - 0.3; this.add(p, 0, 3 * s, 4 * s, g); }
+        else { p = this.box(6 * s, 4 * s, 6 * s, m); p.rotation.x = -0.5; this.add(p, 0, 3.4 * s, 0, g); for (k = 0; k < 4; k++) { p = this.box(1.6 * s, 0.5 * s, 1.6 * s, this.mat.white); p.rotation.x = -0.5; this.add(p, (k % 2 ? 1.4 : -1.4) * s, (k < 2 ? 5 : 6.2) * s, (k < 2 ? 2.3 : 0.3) * s, g, true); } }
     } else if (role === 'scout') {
-        this.add(this.cyl(0.4 * s, 0.4 * s, (fit === 'relay' ? 12 : 5) * s, this.mat.deck, 6), 0, (fit === 'relay' ? 6 : 2.5) * s, 0, g);
-        if (fit === 'radar') { p = new T.Mesh(new T.ConeGeometry(3.4 * s, 2 * s, 16, 1, true), m); p.material = m; p.rotation.x = Math.PI / 2; this.add(p, 0, 5.6 * s, 0, g); g.userData.spin = p; }
-        else { p = new T.Mesh(new T.TorusGeometry(2.2 * s, 0.4 * s, 6, 18), m); p.rotation.x = Math.PI / 2; this.add(p, 0, 8 * s, 0, g); this.add(new T.Mesh(new T.SphereGeometry(0.9 * s, 8, 6), m), 0, 12.4 * s, 0, g); }
+        this.add(this.cyl(0.6 * s, 0.6 * s, (fit === 'relay' ? 14 : 6) * s, this.mat.deck, 6), 0, (fit === 'relay' ? 7 : 3) * s, 0, g);
+        if (fit === 'radar') { p = this.cyl(5 * s, 1.6 * s, 2.4 * s, m, 14); p.rotation.z = Math.PI / 2.4; this.add(p, 0, 7 * s, 0, g); g.userData.spin = p; }
+        else { p = new T.Mesh(new T.TorusGeometry(3 * s, 0.7 * s, 6, 16), m); p.rotation.x = Math.PI / 2; this.add(p, 0, 9 * s, 0, g); this.add(new T.Mesh(new T.SphereGeometry(1.4 * s, 8, 6), m), 0, 14.6 * s, 0, g); }
     } else {
-        if (fit === 'decoy') { this.add(new T.Mesh(new T.OctahedronGeometry(3.4 * s), m), 0, 4 * s, 0, g); }
-        else { p = new T.Mesh(new T.TorusGeometry(3 * s, 0.7 * s, 8, 20), m); p.rotation.x = Math.PI / 2; this.add(p, 0, 2 * s, 0, g); p = new T.Mesh(new T.TorusGeometry(1.8 * s, 0.5 * s, 8, 16), m); p.rotation.x = Math.PI / 2; this.add(p, 0, 3.6 * s, 0, g); }
+        if (fit === 'decoy') { this.add(new T.Mesh(new T.OctahedronGeometry(4.4 * s), m), 0, 5.5 * s, 0, g); }
+        else { p = new T.Mesh(new T.TorusGeometry(4 * s, 1 * s, 8, 18), m); p.rotation.x = Math.PI / 2; this.add(p, 0, 2.4 * s, 0, g); p = new T.Mesh(new T.TorusGeometry(2.4 * s, 0.8 * s, 8, 14), m); p.rotation.x = Math.PI / 2; this.add(p, 0, 4.8 * s, 0, g); }
     }
     return g;
 };
 
-/* ---- Your six pieces. Grey hull = yours; the coloured module and the peg light show the fit-out. ---- */
+//  A rounded cartoon hull pointing along +z, and the white wake behind a boat.
+View3D.prototype.hullShape = function(g, mat, r, len, flat) {
+    var p = this.cyl(r, r, len, mat, 10); p.rotation.x = Math.PI / 2; p.scale.set(1, 1, flat); this.add(p, 0, r * flat * 0.7, 0, g);
+    p = new THREE.Mesh(new THREE.ConeGeometry(r, r * 2, 10), mat); p.rotation.x = Math.PI / 2; p.scale.set(1, 1, flat); this.add(p, 0, r * flat * 0.7, len / 2 + r, g);
+};
+View3D.prototype.wake = function(g, len, wid, back) {
+    var sh = new THREE.Shape(); sh.moveTo(0, 0); sh.lineTo(wid, -len); sh.lineTo(-wid, -len);
+    var m = new THREE.Mesh(new THREE.ShapeGeometry(sh), this.mat.foam); m.rotation.x = -Math.PI / 2; m.position.set(0, 0.5, back); g.add(m);
+};
+
+/* ---- Your six pieces. Grey hull = yours; a coloured stripe and module show the role; a peg light shows the stance. ---- */
 View3D.prototype.unitModel = function(o) {
-    var T = THREE, g = new T.Group(), H = this.mat.hull, D = this.mat.deck, p, k, mod, modPos, s;
-    var c = o.cls;
-    if (c === 'seaC') {
-        this.add(this.box(24, 9, 84, H), 0, 4, 0, g);
-        p = new T.Mesh(new T.ConeGeometry(12, 20, 4), H); p.rotation.x = Math.PI / 2; p.rotation.z = Math.PI / 4; p.scale.set(1.41, 1, 0.53); this.add(p, 0, 4, 52, g);
-        this.add(this.box(22, 1, 70, D), 0, 9, -4, g); this.add(this.box(6, 11, 14, H), 9, 14, -22, g);
-        g.userData.pegs = [];
-        for (k = 0; k < 4; k++) { p = this.cyl(2.6, 2.6, 4, this.mat.white, 10); this.add(p, -4, 11.5, -26 + k * 14, g); g.userData.pegs.push(p); }
-        s = 1.7; modPos = [3, 9.5, 28];
-    } else if (c === 'sea') {
-        this.add(this.box(8, 4, 20, H), 0, 2, 0, g);
-        p = new T.Mesh(new T.ConeGeometry(4, 8, 4), H); p.rotation.x = Math.PI / 2; p.rotation.z = Math.PI / 4; p.scale.set(1.41, 1, 0.7); this.add(p, 0, 2, 14, g);
-        s = 0.75; modPos = [0, 4, -2];
-    } else if (c === 'airC') {
-        var sh = new T.Shape(); sh.moveTo(0, 38); sh.lineTo(40, -22); sh.lineTo(12, -16); sh.lineTo(0, -30); sh.lineTo(-12, -16); sh.lineTo(-40, -22); sh.closePath();
-        p = new T.Mesh(new T.ExtrudeGeometry(sh, { depth: 4, bevelEnabled: false }), H); p.rotation.x = Math.PI / 2; this.add(p, 0, 4, 0, g);
-        this.add(this.box(8, 6, 44, H), 0, 3, 0, g);
-        g.userData.pegs = [];
-        for (k = 0; k < 4; k++) { p = this.box(4, 3, 10, this.mat.white); this.add(p, (k < 2 ? -1 : 1) * (14 + (k % 2) * 10), -1.5, -8, g); g.userData.pegs.push(p); }
-        s = 1.2; modPos = [0, 6, 4];
-    } else if (c === 'air') {
-        p = this.box(20, 1.2, 2.4, H); p.rotation.y = Math.PI / 4; this.add(p, 0, 0, 0, g);
-        p = this.box(20, 1.2, 2.4, H); p.rotation.y = -Math.PI / 4; this.add(p, 0, 0, 0, g);
-        for (k = 0; k < 4; k++) { this.add(this.cyl(3.4, 3.4, 0.6, D, 12), (k % 2 ? 7 : -7), 1.2, (k < 2 ? 7 : -7), g); }
-        this.add(this.box(5, 2.4, 7, H), 0, 0.6, 0, g);
-        s = 0.6; modPos = [0, 1.8, 0];
-    } else if (c === 'landC') {
-        this.add(this.box(13, 10, 11, H), 0, 9, 15, g); this.add(this.box(14, 4, 40, D), 0, 5, 0, g);
-        for (k = 0; k < 6; k++) { p = this.cyl(3, 3, 3, D, 10); p.rotation.z = Math.PI / 2; this.add(p, (k % 2 ? 7.5 : -7.5), 3, -14 + Math.floor(k / 2) * 14, g); }
-        g.userData.pegs = [];
-        for (k = 0; k < 4; k++) { p = this.box(3.4, 3, 3.4, this.mat.white); this.add(p, (k % 2 ? 3 : -3), 8.5, -16 + Math.floor(k / 2) * 6, g); g.userData.pegs.push(p); }
-        s = 1.3; modPos = [0, 7, -2];
-    } else {
-        this.add(this.box(11, 4, 16, H), 0, 4, 0, g); this.add(this.box(3, 4, 18, D), -6.5, 2.4, 0, g); this.add(this.box(3, 4, 18, D), 6.5, 2.4, 0, g);
-        s = 0.8; modPos = [0, 6, 0];
-    }
-    mod = this.module(o.role, o.fit, s); mod.position.set(modPos[0], modPos[1], modPos[2]); g.add(mod);
-    g.userData.spin = mod.userData.spin;
-    //  Stance peg: orange = push, white = hold, green = escort.
-    this.add(new T.Mesh(new T.SphereGeometry(1.1 * s, 8, 6), this.mat.peg[o.stance] || this.mat.peg.hold), modPos[0], modPos[1] + 0.4, modPos[2] - 7 * s, g);
+    var g = KIT.build(o.cls, o.role);
+    if (o.dom === 'sea') { this.wake(g, CLASSES[o.cls].big ? 190 : 60, CLASSES[o.cls].big ? 34 : 12, CLASSES[o.cls].big ? -70 : -12); }
     return g;
 };
 
-/* ---- Their pieces: red, heavier, squarer. ---- */
+/* ---- Their pieces: red, square, with hazard stripes. They sail towards you (model built facing +z, turned by its heading). ---- */
 View3D.prototype.enemyModel = function(o) {
-    var T = THREE, g = new T.Group(), R = this.mat.red, D = this.mat.redDark, p, e = o.et;
+    var T = THREE, g = new T.Group(), R = this.mat.red, D = this.mat.redDark, p, k, e = o.et;
     if (e === 'lst' || e === 'lhd') {
-        var L = e === 'lhd' ? 150 : 84, Wd = e === 'lhd' ? 40 : 26, Hh = e === 'lhd' ? 16 : 12;
+        var L = e === 'lhd' ? 160 : 96, Wd = e === 'lhd' ? 46 : 34, Hh = e === 'lhd' ? 20 : 16;
         this.add(this.box(Wd, Hh, L, R), 0, Hh / 2, 0, g);
-        p = this.box(Wd - 4, 2, L * 0.22, D); p.rotation.x = 0.5; this.add(p, 0, Hh * 0.55, L / 2 + 4, g);          //  bow ramp
-        this.add(this.box(Wd * 0.7, Hh * 0.8, L * 0.16, D), 0, Hh * 1.3, -L * 0.36, g);
-        if (e === 'lhd') { this.add(this.box(Wd - 2, 1.5, L - 10, D), 0, Hh + 0.8, 0, g); this.add(this.box(8, 16, 30, R), Wd / 2 - 5, Hh + 8, -10, g); }
+        p = this.box(Wd - 4, 3, L * 0.26, D); p.rotation.x = -0.55; this.add(p, 0, Hh * 0.7, L / 2 + 8, g);
+        this.add(this.box(Wd * 0.7, Hh * 0.85, L * 0.18, D), 0, Hh * 1.4, -L * 0.36, g);
+        this.add(this.box(Wd * 0.74, 2, 4, this.mat.white), 0, Hh * 1.55, -L * 0.265, g, true);
+        for (k = 0; k < 5; k++) { this.add(this.box(Wd + 0.6, 3, 5, k % 2 ? D : this.mat.hazard), 0, Hh - 2, L * 0.4 - k * 9, g, true); }
+        if (e === 'lhd') { this.add(this.box(Wd - 2, 2, L - 12, D), 0, Hh + 1, 0, g, true); this.add(this.box(9, 18, 34, R), Wd / 2 - 6, Hh + 9, -10, g); }
+        this.wake(g, L * 1.6, Wd, -L / 2);
     } else if (e === 'escort') {
-        this.add(this.box(10, 5, 30, R), 0, 2.5, 0, g);
-        p = new T.Mesh(new T.ConeGeometry(5, 10, 4), R); p.rotation.x = Math.PI / 2; p.rotation.z = Math.PI / 4; p.scale.set(1.41, 1, 0.7); this.add(p, 0, 2.5, 20, g);
-        this.add(new T.Mesh(new T.SphereGeometry(3, 10, 6), D), 0, 6, 4, g); p = this.cyl(0.5, 0.5, 9, D, 6); p.rotation.x = Math.PI / 2; this.add(p, 0, 6.6, 9, g);
+        this.hullShape(g, R, 7, 30, 0.6);
+        this.add(new T.Mesh(new T.SphereGeometry(4, 10, 6), D), 0, 8, 4, g); p = this.cyl(0.8, 0.8, 12, D, 6); p.rotation.x = Math.PI / 2; this.add(p, 0, 9, 11, g);
+        this.wake(g, 70, 14, -14);
     } else if (e === 'jammer') {
-        this.add(this.box(18, 8, 60, R), 0, 4, 0, g); this.add(this.cyl(0.8, 0.8, 22, D, 6), 0, 19, 0, g);
-        p = new T.Mesh(new T.TorusGeometry(11, 1.6, 8, 24), D); p.rotation.x = Math.PI / 2; this.add(p, 0, 26, 0, g);
-        p = new T.Mesh(new T.TorusGeometry(6, 1.2, 8, 20), D); p.rotation.x = Math.PI / 2; this.add(p, 0, 31, 0, g);
+        this.hullShape(g, R, 11, 50, 0.6); this.add(this.cyl(1.2, 1.2, 26, D, 6), 0, 22, 0, g);
+        p = new T.Mesh(new T.TorusGeometry(13, 2.2, 8, 22), this.mat.role.decoy); p.rotation.x = Math.PI / 2; this.add(p, 0, 30, 0, g);
+        p = new T.Mesh(new T.TorusGeometry(7, 1.6, 8, 18), this.mat.role.decoy); p.rotation.x = Math.PI / 2; this.add(p, 0, 37, 0, g);
+        this.wake(g, 100, 22, -24);
     } else if (e === 'uav') {
-        p = new T.Mesh(new T.ConeGeometry(8, 20, 3), R); p.rotation.x = Math.PI / 2; p.scale.set(1, 1, 0.25); this.add(p, 0, 0, 0, g);
+        p = new T.Mesh(new T.ConeGeometry(7, 30, 3), R); p.rotation.x = Math.PI / 2; p.scale.set(1.5, 1, 0.35); this.add(p, 0, 0, 0, g);
+        this.add(this.box(2, 7, 8, D), 0, 3, -10, g);
     } else {
-        p = new T.Mesh(new T.SphereGeometry(5, 12, 8), this.mat.sub); p.scale.set(1, 0.8, 3.4); this.add(p, 0, 0, 0, g);
-        this.add(this.box(2, 5, 6, this.mat.sub), 0, 4, 2, g);
+        p = new T.Mesh(new T.SphereGeometry(6, 12, 8), this.mat.sub); p.scale.set(1, 0.8, 3.2); this.add(p, 0, 0, 0, g);
+        this.add(this.box(2.4, 7, 7, this.mat.sub), 0, 5, 2, g);
     }
     return g;
 };
 
-View3D.prototype.yOf = function(o) { return o.dom === 'air' ? (o.big ? 120 : 70) : o.dom === 'sub' ? -7 : o.dom === 'land' ? 6 : 0; };
+View3D.prototype.yOf = function(o) { return o.dom === 'air' ? (o.big ? 120 : 70) : o.dom === 'sub' ? (o.side ? -3 : -2) : o.dom === 'land' ? 6 : 0; };
 
 /* ---- Keep one scene object per game piece, creating and removing them as the list changes. ---- */
 View3D.prototype.entity = function(o) {
@@ -963,11 +999,11 @@ View3D.prototype.entity = function(o) {
     if (en && en.key !== key) { this.scene.remove(en.g); en = null; }
     if (!en) {
         en = { g: new T.Group(), key: key, kind: kind };
-        var color = o.side ? (kind === 'unknown' ? '#aeb6ba' : '#e23b2e') : ROLES[o.role].color;
+        var color = o.side ? (kind === 'unknown' ? '#c9d0d4' : '#e5412d') : ROLES[o.role].color;
         en.icon = new T.Sprite(new T.SpriteMaterial({ map: this.iconTex(kind, color, o.side === 1 && kind !== 'unknown'), transparent: true, depthTest: false, fog: false }));
         en.icon.renderOrder = 10; en.g.add(en.icon);
         if (kind !== 'unknown') { en.model = o.side ? this.enemyModel(o) : this.unitModel(o); en.g.add(en.model); }
-        en.bar = new T.Sprite(new T.SpriteMaterial({ color: o.side ? 0xff5a52 : 0x4be07f, depthTest: false, fog: false })); en.bar.renderOrder = 11; en.g.add(en.bar);
+        en.bar = new T.Sprite(new T.SpriteMaterial({ color: o.side ? 0xe5412d : 0x4be07f, depthTest: false, fog: false })); en.bar.renderOrder = 11; en.g.add(en.bar);
         if (!o.side) { en.badge = new T.Sprite(new T.SpriteMaterial({ map: this.iconTex('unknown', '#ff8a3c', false), transparent: true, depthTest: false, fog: false })); en.badge.renderOrder = 12; en.g.add(en.badge); }
         this.scene.add(en.g);
         this.ents[o.id] = en;
@@ -976,7 +1012,7 @@ View3D.prototype.entity = function(o) {
     return en;
 };
 
-//  Draw one frame's worth of pieces. 'list' is units then enemies; works for the live game and for the replay.
+//  Draw one frame's worth of pieces. Works for the live game and for the replay.
 View3D.prototype.sync = function(units, enemies, ui) {
     var i, o, en, t = ui.time || 0, self = this, cp = this.cam.position, k;
     this.frame++;
@@ -984,22 +1020,22 @@ View3D.prototype.sync = function(units, enemies, ui) {
     function place(o) {
         if (o.side && o.det < 1) { return; }
         en = self.entity(o);
-        var y = self.yOf(o);
+        var y = self.yOf(o), kind = en.kind;
+        if (o.dom !== 'air' && o.dom !== 'land') { y += Math.sin(t * 1.6 + o.id) * 0.9; }
         en.g.position.set(o.x, y, o.z);
-        var d = cp.distanceTo(en.g.position), wpp = d * pxWorld, unit = wpp * self.ui, kind = en.kind;
-        var apparent = (MODEL_LEN[kind] || 20) / wpp, showModel = !!en.model && apparent > 7 * self.ui, showIcon = apparent < 34 * self.ui;
+        var d = cp.distanceTo(en.g.position), wpp = d * pxWorld, unit = wpp * self.ui;
+        var apparent = (MODEL_LEN[kind] || 20) / wpp, showModel = !!en.model && apparent > 7 * self.ui, showIcon = apparent < 38 * self.ui;
         if (en.model) {
             en.model.visible = showModel; en.model.rotation.y = o.heading || 0;
-            if (en.model.userData.spin) { en.model.userData.spin.rotation.z = t * 3; }
-            if (en.model.userData.pegs) { for (k = 0; k < 4; k++) { en.model.userData.pegs[k].visible = k < o.cargo; } }
+            if (showModel && en.model.userData.anim) { KIT.animate(en.model.userData.anim, t, o, ui.dt); }
         }
         en.icon.visible = showIcon || !en.model;
         var px = ICON_PX[kind] * unit; en.icon.scale.set(px, px, 1);
-        en.icon.position.y = showModel ? 26 + (MODEL_LEN[kind] || 20) * 0.25 : 4;
+        en.icon.position.y = showModel ? 30 + (MODEL_LEN[kind] || 20) * 0.3 : 4;
         en.icon.material.opacity = (o.side || o.contact || o.slaved) ? 1 : 0.6;
         var hp = o.maxHp ? o.hp / o.maxHp : o.hp;
         en.bar.visible = hp < 0.999 && kind !== 'unknown';
-        en.bar.scale.set(Math.max(0.01, hp) * 26 * unit, 3 * unit, 1); en.bar.position.y = en.icon.position.y + ICON_PX[kind] * unit * 0.75;
+        en.bar.scale.set(Math.max(0.01, hp) * 26 * unit, 3.4 * unit, 1); en.bar.position.y = en.icon.position.y + ICON_PX[kind] * unit * 0.75;
         if (en.badge) {
             //  Orange '?' badge: you cannot steer this one right now.
             en.badge.visible = !o.contact && !o.slaved;
@@ -1020,7 +1056,7 @@ View3D.prototype.sync = function(units, enemies, ui) {
     this.destLine.visible = false;
     if (sel) {
         var sp = sel.spec || unitSpec(sel.cls, sel.role, sel.fit), sy = this.yOf(sel);
-        this.selRing.visible = true; this.selRing.position.set(sel.x, 1.4, sel.z); this.selRing.scale.setScalar(Math.max(22, 14 * cp.distanceTo(new THREE.Vector3(sel.x, sy, sel.z)) * pxWorld));
+        this.selRing.visible = true; this.selRing.position.set(sel.x, 1.4, sel.z); this.selRing.scale.setScalar(Math.max(24, 14 * cp.distanceTo(new THREE.Vector3(sel.x, sy, sel.z)) * pxWorld));
         this.sensRing.visible = true; this.sensRing.position.set(sel.x, 1.3, sel.z); this.sensRing.scale.setScalar(sp.sensor * W.sensor);
         if (sp.range) { this.wpnRing.visible = true; this.wpnRing.position.set(sel.x, 1.5, sel.z); this.wpnRing.scale.setScalar(sp.range); }
         if (sp.relay) { this.relayRing.visible = true; this.relayRing.position.set(sel.x, 1.1, sel.z); this.relayRing.scale.setScalar(sp.relay * W.comms); }
@@ -1042,36 +1078,33 @@ View3D.prototype.sync = function(units, enemies, ui) {
     var n = 0;
     function disc(x, z, r, color) {
         var m = self.jamDiscs[n];
-        if (!m) { m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.16, depthWrite: false, fog: false })); m.rotation.x = -Math.PI / 2; self.scene.add(m); self.jamDiscs[n] = m; }
+        if (!m) { m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.2, depthWrite: false, fog: false })); m.rotation.x = -Math.PI / 2; self.scene.add(m); self.jamDiscs[n] = m; }
         m.visible = true; m.position.set(x, 0.9, z); m.scale.set(r, r, 1); m.material.color.setHex(color); n++;
     }
-    for (i = 0; i < enemies.length; i++) { o = enemies[i]; if (o.et === 'jammer' && o.det === 2) { disc(o.x, o.z, JAM_RADIUS, 0xff3020); } }
-    for (i = 0; i < units.length; i++) { o = units[i]; if (o.role === 'decoy' && o.fit === 'jammer') { disc(o.x, o.z, o.big ? 700 : 380, 0xb06cff); } }
+    for (i = 0; i < enemies.length; i++) { o = enemies[i]; if (o.et === 'jammer' && o.det === 2) { disc(o.x, o.z, JAM_RADIUS, 0xe5412d); } }
+    for (i = 0; i < units.length; i++) { o = units[i]; if (o.role === 'decoy' && o.fit === 'jammer') { disc(o.x, o.z, CLASSES[o.cls].big ? 700 : 380, 0x9a5be0); } }
     for (i = n; i < this.jamDiscs.length; i++) { this.jamDiscs[i].visible = false; }
 };
 
-/* ---- Effects: tracers, and Battleship pegs (red = hit, white = miss). ---- */
+/* ---- Effects: tracers, comic bursts for hits, white splash rings for misses. ---- */
 View3D.prototype.fx = function(events) {
     var T = THREE, i, e, m;
     for (i = 0; i < events.length; i++) {
         e = events[i];
         if (e.k === 'shot') {
-            var g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute([e.x, e.y ? 80 : 6, e.z, e.tx, e.ty ? 70 : 4, e.tz], 3));
-            m = new T.Line(g, new T.LineBasicMaterial({ color: e.side ? 0xff6a50 : (e.thin ? 0x8fd0ff : 0xfff2a0), transparent: true, opacity: 0.95 }));
-            m.frustumCulled = false; this.scene.add(m); this.fxList.push({ m: m, life: 0.28, max: 0.28, kind: 'line' });
-            this.peg(e.tx, e.tz, e.hit, e.ty);
-        } else if (e.k === 'hit') { this.peg(e.x, e.z, e.hit, 0); }
-        else if (e.k === 'boom' || e.k === 'landed') {
-            m = new T.Sprite(new T.SpriteMaterial({ map: this.glow, color: e.k === 'landed' ? 0xff2a1a : (e.side ? 0xffb060 : 0x9fd0ff), transparent: true, blending: T.AdditiveBlending, depthWrite: false }));
-            m.position.set(e.x, e.dom === 'air' ? 70 : 8, e.z); this.scene.add(m);
-            this.fxList.push({ m: m, life: e.k === 'landed' ? 2.2 : 0.9, max: e.k === 'landed' ? 2.2 : 0.9, kind: 'boom', size: e.k === 'landed' ? 520 : (e.big ? 260 : 110) });
-        }
+            var g = new T.BufferGeometry(); g.setAttribute('position', new T.Float32BufferAttribute([e.x, e.y ? 80 : 8, e.z, e.tx, e.ty ? 70 : 6, e.tz], 3));
+            m = new T.Line(g, new T.LineBasicMaterial({ color: e.side ? 0xe5412d : (e.thin ? 0x2ad4ff : 0xfff2a8), transparent: true, opacity: 1, fog: false }));
+            m.frustumCulled = false; this.scene.add(m); this.fxList.push({ m: m, life: 0.3, max: 0.3, kind: 'line' });
+            this.burst(e.tx, e.ty ? 70 : 10, e.tz, e.hit, e.hit ? 0.5 : 0.4, 30);
+        } else if (e.k === 'hit') { this.burst(e.x, 12, e.z, e.hit, 0.6, 46); }
+        else if (e.k === 'boom') { this.burst(e.x, e.dom === 'air' ? 70 : 14, e.z, true, 1.0, e.big ? 190 : 90); }
+        else if (e.k === 'landed') { this.burst(e.x, 20, e.z, true, 2.4, 420); }
     }
 };
-View3D.prototype.peg = function(x, z, hit, high) {
-    var m = this.cyl(hit ? 5 : 3.5, hit ? 5 : 3.5, hit ? 26 : 16, new THREE.MeshBasicMaterial({ color: hit ? 0xff2a1a : 0xffffff, transparent: true }), 8);
-    m.position.set(x + (hit ? 0 : Math.random() * 30 - 15), (high ? 70 : 0) + (hit ? 13 : 8), z + (hit ? 0 : Math.random() * 30 - 15));
-    this.scene.add(m); this.fxList.push({ m: m, life: hit ? 2.4 : 1.4, max: hit ? 2.4 : 1.4, kind: 'peg' });
+View3D.prototype.burst = function(x, y, z, hit, life, size) {
+    var m = new THREE.Sprite(new THREE.SpriteMaterial({ map: hit ? this.starTex : this.splashTex, transparent: true, depthTest: false, fog: false }));
+    m.position.set(x, y, z); m.renderOrder = 9; this.scene.add(m);
+    this.fxList.push({ m: m, life: life, max: life, kind: 'burst', size: size, spin: Math.random() * 6 });
 };
 View3D.prototype.clearFx = function() {
     for (var i = 0; i < this.fxList.length; i++) { this.scene.remove(this.fxList[i].m); }
@@ -1079,12 +1112,13 @@ View3D.prototype.clearFx = function() {
 };
 
 View3D.prototype.setWeather = function(key) {
-    var W = WEATHER[key] || WEATHER.clear;
+    var W = WEATHER[key] || WEATHER.clear, L = WEATHER_LOOK[key] || WEATHER_LOOK.clear;
     this.want.vis = W.vis;
-    this.want.rain = key === 'rain' ? 0.55 : key === 'storm' ? 0.85 : 0;
-    this.want.dark = key === 'storm' ? 0.55 : key === 'rain' ? 0.35 : key === 'fog' ? 0.12 : 0;
-    this.want.sky.setHex({ clear: 0x7fa6c2, haze: 0x9aabb2, fog: 0xa9b1b3, rain: 0x55646d, storm: 0x333c43 }[key] || 0x7fa6c2);
+    this.want.rain = key === 'rain' ? 0.6 : key === 'storm' ? 0.9 : 0;
+    this.want.grey.setHex(L[0]); this.want.mix = L[1]; this.want.dark = L[2];
 };
+//  Time of day, 0 = sunrise, 1 = sunset.
+View3D.prototype.setDay = function(f) { this.day = clamp(f, 0, 1); };
 
 View3D.prototype.placeCam = function() {
     var z = this.zoom, d = 150 * Math.pow(5600 / 150, z), pitch = (9 + 46 * Math.pow(z, 0.8)) * Math.PI / 180;
@@ -1125,32 +1159,413 @@ View3D.prototype.panBy = function(dx, dy) {
 View3D.prototype.goTo = function(zoom, x, z) { this.zoom = zoom; this.target.set(x, 0, z); this.placeCam(); };
 
 View3D.prototype.render = function(dt) {
-    var w = this.weather, t = this.want, k = Math.min(1, dt * 0.6), i;
-    w.vis += (t.vis - w.vis) * k; w.rain += (t.rain - w.rain) * k; w.dark += (t.dark - w.dark) * k; w.sky.lerp(t.sky, k);
-    this.sky.copy(w.sky); this.scene.fog.color.copy(w.sky);
+    var w = this.weather, t = this.want, k = Math.min(1, dt * 0.6), i, A = this.tmpA, B = this.tmpB;
+    w.vis += (t.vis - w.vis) * k; w.rain += (t.rain - w.rain) * k; w.mix += (t.mix - w.mix) * k; w.dark += (t.dark - w.dark) * k; w.grey.lerp(t.grey, k);
+
+    //  Where are we in the day? Blend between the two nearest keys.
+    var f = this.day, a = DAY_KEYS[0], b = DAY_KEYS[DAY_KEYS.length - 1];
+    for (i = 0; i < DAY_KEYS.length - 1; i++) { if (f >= DAY_KEYS[i][0] && f <= DAY_KEYS[i + 1][0]) { a = DAY_KEYS[i]; b = DAY_KEYS[i + 1]; } }
+    var u = b[0] > a[0] ? (f - a[0]) / (b[0] - a[0]) : 0;
+    u = u * u * (3 - 2 * u);
+    this.sky.setHex(a[1]).lerp(A.setHex(b[1]), u).lerp(w.grey, w.mix);
+    this.scene.fog.color.copy(this.sky);
+    this.seaMat.color.setHex(a[2]).lerp(A.setHex(b[2]), u).lerp(B.copy(w.grey).multiplyScalar(0.62), w.mix * 0.75);
+    this.amb.color.setHex(a[3]).lerp(A.setHex(b[3]), u); this.amb.intensity = (a[4] + (b[4] - a[4]) * u) * (1 - w.dark * 0.35);
+    this.sun.color.setHex(a[5]).lerp(A.setHex(b[5]), u); this.sun.intensity = (a[6] + (b[6] - a[6]) * u) * (1 - w.dark * 0.7);
+    //  The sun rises behind you (east), passes overhead, and sets over the far coast (west).
+    var ang = (0.06 + f * 0.9) * Math.PI, sx = -1400, sy = Math.sin(ang) * 15000, sz = 2600 - Math.cos(ang) * 15000;
+    this.sun.position.set(sx, Math.max(600, sy), sz);
+    this.sunDisc.position.set(sx + this.target.x * 0.5, sy, sz); this.sunDisc.lookAt(this.cam.position);
+    this.sunDisc.material.color.copy(this.sun.color).lerp(A.setHex(0xffffff), 0.35);
+    this.sunDisc.visible = w.mix < 0.5;
+    this.mat.foam.color.setHex(0xffffff).lerp(this.sun.color, 0.35 * (1 - Math.abs(f - 0.46) < 0.3 ? 0 : 1));
+
     //  Haze is measured from what you are looking at, so zooming out does not white out the map.
     var cd = this.cam.position.distanceTo(this.target);
     this.scene.fog.near = cd * 0.55 + w.vis * 0.15; this.scene.fog.far = cd + w.vis * 1.25;
-    this.hemi.intensity = 0.95 - w.dark * 0.5; this.sun.intensity = 0.9 - w.dark * 0.8;
+
+    //  Wave strokes drift past whatever you are looking at.
+    this.waveT = (this.waveT || 0) + dt;
+    var spread = cd * 0.95, wl = cd * 0.035;
+    for (i = 0; i < this.waves.length; i++) {
+        var wv = this.waves[i], ud = wv.userData, ux = ((ud.u + this.waveT * 0.012 + 1) % 2) - 1;
+        wv.position.set(this.target.x + ux * spread, 0.25, Math.max(8, this.target.z + ud.v * spread * 0.8));
+        wv.scale.set(wl * ud.len, wl * 0.07, 1);
+    }
+
     this.rain.material.opacity = w.rain;
     if (w.rain > 0.02) {
         var pa = this.rain.geometry.attributes.position;
         for (i = 0; i < pa.count; i++) { var y = pa.getY(i) - dt * 900; if (y < 0) { y += 1400; } pa.setY(i, y); }
         pa.needsUpdate = true;
         this.rain.position.set(this.target.x, 0, this.target.z);
-        var rs = Math.max(0.3, this.cam.position.distanceTo(this.target) / 1500); this.rain.scale.set(rs, rs, rs);
+        var rs = Math.max(0.3, cd / 1500); this.rain.scale.set(rs, rs, rs);
     }
     this.dish.rotation.y += dt * 1.5;
+    var pxWorld = 2 * Math.tan(this.cam.fov * Math.PI / 360) / this.h;
     for (i = this.fxList.length - 1; i >= 0; i--) {
-        var f = this.fxList[i];
-        f.life -= dt;
-        if (f.life <= 0) { this.scene.remove(f.m); if (f.m.geometry && f.kind === 'line') { f.m.geometry.dispose(); } this.fxList.splice(i, 1); continue; }
-        var a = f.life / f.max;
-        if (f.kind === 'boom') { var s = f.size * (1.2 - a); f.m.scale.set(s, s, 1); f.m.material.opacity = a; }
-        else { f.m.material.opacity = Math.min(1, a * 2); }
+        var fx = this.fxList[i];
+        fx.life -= dt;
+        if (fx.life <= 0) { this.scene.remove(fx.m); if (fx.kind === 'line') { fx.m.geometry.dispose(); } fx.m.material.dispose(); this.fxList.splice(i, 1); continue; }
+        var al = fx.life / fx.max;
+        if (fx.kind === 'burst') {
+            //  Pops out fast, then holds: never smaller than a few pixels so it reads from far away.
+            var grow = Math.min(1, (1 - al) * 5), s = Math.max(fx.size, 16 * this.ui * this.cam.position.distanceTo(fx.m.position) * pxWorld) * (0.4 + 0.6 * grow);
+            fx.m.scale.set(s, s, 1); fx.m.material.rotation = fx.spin; fx.m.material.opacity = Math.min(1, al * 3);
+        } else { fx.m.material.opacity = Math.min(1, al * 2); }
     }
     this.r.render(this.scene, this.cam);
 };
+
+/* ==================================================================
+    KIT: the detailed machines. Riveted plate, brass, funnels and rigging,
+    drawn with an even ink line. Each builder returns the parts that move.
+   ================================================================== */
+var KIT = (function() {
+var T = THREE;
+//  Illustration shading: a shadow tone, a soft step, the lit tone, and a small bright top band.
+var steps = new Uint8Array([118, 118, 118, 122, 122, 122, 170, 170, 170, 228, 228, 228, 232, 232, 232, 236, 236, 236, 240, 240, 240, 255, 255, 255]);
+var grad = new T.DataTexture(steps, 8, 1, T.RGBFormat); grad.minFilter = grad.magFilter = T.NearestFilter; grad.needsUpdate = true;
+function toon(c) { return new T.MeshToonMaterial({ color: c, gradientMap: grad }); }
+//  Ink line of even width on screen: the back faces pushed out along their normals.
+var INKM = new T.ShaderMaterial({ side: T.BackSide, uniforms: { w: { value: 0.011 } },
+    vertexShader: 'uniform float w; void main(){ vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); vec3 n = normalize(normalMatrix * normal); vec2 o = normalize((projectionMatrix * vec4(n, 0.0)).xy + vec2(1e-5)); p.xy += o * w * p.w; gl_Position = p; }',
+    fragmentShader: 'void main(){ gl_FragColor = vec4(0.16, 0.10, 0.08, 1.0); }' });
+var CREAM = toon(0xf6ead0), WOOD = toon(0xb97a3e), DARK = toon(0x74492a), BRASS = toon(0xe0ab35), STEEL = toon(0x9fb0ba), CANVAS = toon(0xe6d6a6),
+    R = toon(0xe23a2c), GLASS = toon(0x2c5f8f), TYRE = toon(0x35302e), WH = new T.MeshBasicMaterial({ color: 0xffffff }),
+    SMOKE = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 }), GLOSS = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthWrite: false });
+function P(geo, mat, x, y, z, g, rx, ry, rz, sc) {
+    var m = new T.Mesh(geo, mat); m.position.set(x, y, z); if (rx) { m.rotation.x = rx; } if (ry) { m.rotation.y = ry; } if (rz) { m.rotation.z = rz; }
+    if (sc) { m.scale.set(sc[0], sc[1], sc[2]); }
+    if (mat !== WH && mat !== SMOKE && mat !== GLOSS) { m.add(new T.Mesh(geo, INKM)); }
+    g.add(m); return m;
+}
+//  Boxes have rounded edges, like moulded or hand-drawn forms, not CAD blocks.
+function box(w, h, d) {
+    var m = Math.min(w, h, d), b = Math.min(m * 0.3, 1.6), r = Math.max(0.05, Math.min(m * 0.35, 2.2) - b), W = w - 2 * b, Hh = h - 2 * b, s = new T.Shape();
+    r = Math.min(r, W / 2 - 0.01, Hh / 2 - 0.01); if (r < 0.02) { r = 0.02; }
+    s.moveTo(-W / 2 + r, -Hh / 2); s.lineTo(W / 2 - r, -Hh / 2); s.absarc(W / 2 - r, -Hh / 2 + r, r, -Math.PI / 2, 0, false);
+    s.lineTo(W / 2, Hh / 2 - r); s.absarc(W / 2 - r, Hh / 2 - r, r, 0, Math.PI / 2, false);
+    s.lineTo(-W / 2 + r, Hh / 2); s.absarc(-W / 2 + r, Hh / 2 - r, r, Math.PI / 2, Math.PI, false);
+    s.lineTo(-W / 2, -Hh / 2 + r); s.absarc(-W / 2 + r, -Hh / 2 + r, r, Math.PI, Math.PI * 1.5, false);
+    var g = new T.ExtrudeGeometry(s, { depth: Math.max(0.02, d - 2 * b), bevelEnabled: true, bevelSize: b, bevelThickness: b, bevelSegments: 3, curveSegments: 5 });
+    g.translate(0, 0, -Math.max(0.02, d - 2 * b) / 2); g.computeVertexNormals();
+    return g;
+}
+var cyl = function(a, b, h, s) { return new T.CylinderGeometry(a, b, h, (s && s < 8) ? s : 30); },
+    sph = function(r) { return new T.SphereGeometry(r, 30, 20); }, cone = function(r, h, s) { return new T.ConeGeometry(r, h, 30); }, tor = function(r, t) { return new T.TorusGeometry(r, t, 12, 40); };
+var HP = Math.PI / 2;
+//  A painted highlight: the long white streak an animator draws along a curved, glossy surface.
+function gloss(g, x, y, z, len, wid, ry, rz) { var m = P(sph(1), GLOSS, x, y, z, g, 0, ry || 0, rz || 0, [wid, wid * 0.35, len]); m.renderOrder = 3; return m; }
+//  Shared period parts.
+function hull(g, mat, r, len, flat, x, y) {
+    x = x || 0; y = (y || 0) + r * flat * 0.7;
+    //  One smooth lathed body: rounded stern, full belly, drawn-out bow.
+    var pts = [], i, n = 26;
+    for (i = 0; i <= n; i++) { var u = i / n, rr = r * Math.pow(Math.sin(Math.PI * Math.pow(u, 0.62)), 0.55); pts.push(new T.Vector2(Math.max(0.01, rr), (u - 0.42) * (len + r * 2.6))); }
+    P(new T.LatheGeometry(pts, 32), mat, x, y, 0, g, HP, 0, 0, [1, 1, flat]);
+    gloss(g, x - r * 0.45, y + r * flat * 0.72, len * 0.08, len * 0.3, r * 0.16); gloss(g, x - r * 0.3, y + r * flat * 0.8, len * 0.42, len * 0.07, r * 0.13);
+}
+//  A two-blade wooden propeller with a brass hub, spinning about z. Returns the part to spin.
+function prop(g, x, y, z, len) { var p = new T.Group(); p.position.set(x, y, z); g.add(p); P(box(len, 1.5, 0.7), WOOD, 0, 0, 0, p); P(cone(1.5, 3.4), BRASS, 0, 0, 1.2, p, HP); var d = P(new T.CircleGeometry(len / 2, 30), GLOSS, 0, 0, 0.2, p); d.material = PROPBLUR; return p; }
+var PROPBLUR = new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.22, depthWrite: false, side: T.DoubleSide });
+//  An exposed radial engine on a pylon, with its propeller.
+function engine(g, x, y, z, s, props) { P(sph(3.2 * s), R, x, y, z - 1.5 * s, g, 0, 0, 0, [1, 1, 2.2]); gloss(g, x - 1.2 * s, y + 2.5 * s, z - 1.5 * s, 4 * s, 0.7 * s); P(cyl(3 * s, 3 * s, 3 * s), STEEL, x, y, z + 2.4 * s, g, HP); P(cyl(1.4 * s, 1.4 * s, 2 * s), DARK, x, y, z + 3.4 * s, g, HP); props.push(prop(g, x, y, z + 5 * s, 14 * s)); }
+function porthole(g, x, y, z, ry) { P(cyl(1.8, 1.8, 0.8), BRASS, x, y, z, g, 0, 0, HP).rotation.y = ry || 0; P(cyl(1.1, 1.1, 1), GLASS, x, y, z, g, 0, 0, HP).rotation.y = ry || 0; }
+function rivets(g, x0, y, z0, z1, n) { for (var i = 0; i < n; i++) { P(sph(0.5), BRASS, x0, y, z0 + (z1 - z0) * i / (n - 1), g); } }
+function wheel(g, x, y, z, r, list) { var w = new T.Group(); w.position.set(x, y, z); g.add(w); P(cyl(r, r, 2.6, 14), TYRE, 0, 0, 0, w, 0, 0, HP); P(cyl(r * 0.5, r * 0.5, 3, 8), CREAM, 0, 0, 0, w, 0, 0, HP); P(box(3.2, r * 1.5, 0.9), BRASS, 0, 0, 0, w); list.push(w); }
+function stack(g, x, y, z, h, smoke) { P(cyl(2.4, 2.8, h), DARK, x, y + h / 2, z, g); P(cyl(2.9, 2.9, 2), R, x, y + h - 2, z, g); for (var i = 0; i < 3; i++) { var s = P(sph(3), SMOKE, x, y + h + 4, z, g); s.userData.ph = i / 3; s.userData.base = [x, y + h + 2, z]; smoke.push(s); } }
+
+
+/* ---- Painted plating: seams, rivet rows and camouflage blotches drawn onto a texture, so every surface carries detail. ---- */
+var seed = 7;
+function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+function plateTex(base, blot, streak) {
+    var c = document.createElement('canvas'); c.width = c.height = 256; var x = c.getContext('2d'), i, k;
+    x.fillStyle = base; x.fillRect(0, 0, 256, 256);
+    if (blot) {
+        x.fillStyle = blot;
+        for (i = 0; i < 20; i++) {
+            var bx = rnd() * 256, by = rnd() * 256;
+            for (k = 0; k < 3; k++) { x.beginPath(); x.ellipse(bx + rnd() * 16 - 8, by + rnd() * 12 - 6, streak ? 22 + rnd() * 16 : 9 + rnd() * 9, streak ? 4 + rnd() * 3 : 6 + rnd() * 7, streak ? -0.5 : rnd() * 3, 0, 6.3); x.fill(); }
+            //  Draw each blotch again across the edges so the texture tiles.
+            if (bx < 40) { x.beginPath(); x.ellipse(bx + 256, by, 12, 8, 0, 0, 6.3); x.fill(); }
+            if (by < 40) { x.beginPath(); x.ellipse(bx, by + 256, 12, 8, 0, 0, 6.3); x.fill(); }
+        }
+    }
+    //  Plate seams in a brick pattern, with a rivet every few pixels along them.
+    x.strokeStyle = 'rgba(30,20,14,0.42)'; x.lineWidth = 2;
+    for (i = 0; i < 4; i++) {
+        x.beginPath(); x.moveTo(0, i * 64 + 2); x.lineTo(256, i * 64 + 2); x.stroke();
+        for (k = 0; k < 3; k++) { var sx = k * 85.33 + (i % 2 ? 42 : 0); x.beginPath(); x.moveTo(sx, i * 64 + 2); x.lineTo(sx, i * 64 + 66); x.stroke(); }
+    }
+    for (i = 0; i < 4; i++) {
+        for (k = 0; k < 16; k++) { rivet(k * 16 + 8, i * 64 + 9); }
+        for (k = 0; k < 3; k++) { for (var q = 1; q < 4; q++) { rivet(k * 85.33 + (i % 2 ? 42 : 0) + 6, i * 64 + 2 + q * 16); } }
+    }
+    function rivet(rx, ry) { x.fillStyle = 'rgba(30,20,14,0.5)'; x.beginPath(); x.arc(rx + 0.8, ry + 0.8, 2.3, 0, 6.3); x.fill(); x.fillStyle = 'rgba(255,255,255,0.55)'; x.beginPath(); x.arc(rx - 0.3, ry - 0.3, 1.5, 0, 6.3); x.fill(); }
+    var t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; return t;
+}
+//  Two versions of each plating: one mapped for round bodies, one for boxes (whose texture coordinates are in model units).
+function plated(base, blot, streak) {
+    var tx = plateTex(base, blot, streak), a = toon(0xffffff), b = toon(0xffffff), tb = tx.clone(); tb.needsUpdate = true;
+    tx.repeat.set(3, 1.5); tb.repeat.set(0.035, 0.035); a.map = tx; b.map = tb;
+    return [a, b];
+}
+var IRON = plated('#aab7bf'), CAMO = plated('#cfa972', '#7a5230'), OLIVE = plated('#66753f', '#d1ab3f', true), BRZ = plated('#d6a43a'), REDP = plated('#e23a2c');
+var LAMP = new T.MeshBasicMaterial({ color: 0xffe08a });
+var haloC = document.createElement('canvas'); haloC.width = haloC.height = 64;
+(function() { var x = haloC.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,236,170,0.95)'); g.addColorStop(0.35, 'rgba(255,220,120,0.4)'); g.addColorStop(1, 'rgba(255,220,120,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); })();
+var haloTex = new T.CanvasTexture(haloC);
+function lamp(g, x, y, z, r, list, ry) {
+    var h = new T.Group(); h.position.set(x, y, z); h.rotation.y = ry || 0; g.add(h);
+    P(cyl(r, r * 0.8, r * 1.2), BRZ[0], 0, 0, 0, h, HP); P(cyl(r * 0.78, r * 0.78, r * 0.3), LAMP, 0, 0, r * 0.62, h, HP);
+    var s = new T.Sprite(new T.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending })); s.scale.set(r * 7, r * 7, 1); s.position.z = r * 1.2; h.add(s);
+    if (list) { list.push(s); }
+    return h;
+}
+//  A muzzle flash: a burst of light that shows for an instant each cycle.
+function flash(parent, x, y, z, ph) { var s = new T.Sprite(new T.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending, opacity: 0 })); s.scale.set(16, 16, 1); s.position.set(x, y, z); s.userData.ph = ph; parent.add(s); return s; }
+//  A thin rod between two points: rigging, struts, antennae.
+function rod(g, a, b, mat, r) {
+    var va = new T.Vector3(a[0], a[1], a[2]), vb = new T.Vector3(b[0], b[1], b[2]), d = vb.clone().sub(va), m = new T.Mesh(cyl(r, r, d.length(), 5), mat);
+    m.position.copy(va).add(vb).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(new T.Vector3(0, 1, 0), d.normalize()); g.add(m); return m;
+}
+//  A round armoured gun-house with stubby barrels, the signature shape of an old ironclad.
+function turret(g, x, y, z, r, mats, guns, ry) {
+    var t = new T.Group(); t.position.set(x, y, z); t.rotation.y = ry || 0; t.userData.b = ry || 0; g.add(t);
+    P(cyl(r, r * 1.12, r * 0.9), mats[0], 0, 0, 0, t); P(sph(r), mats[0], 0, r * 0.4, 0, t, 0, 0, 0, [1, 0.42, 1]); P(tor(r * 1.1, r * 0.09), DARK, 0, -r * 0.42, 0, t, HP);
+    for (var k = 0; k < guns; k++) { var gx = guns === 1 ? 0 : (k ? 1 : -1) * r * 0.42; P(cyl(r * 0.22, r * 0.26, r * 1.5), DARK, gx, r * 0.1, r * 1.1, t, HP); P(tor(r * 0.27, r * 0.08), BRASS, gx, r * 0.1, r * 1.85, t); P(sph(r * 0.32), mats[0], gx, r * 0.1, r * 0.78, t); }
+    return t;
+}
+function flags(g, a, b, n, list) {
+    var cols = [R, BRASS, WH, GLASS, R, CREAM];
+    for (var i = 1; i <= n; i++) { var u = i / (n + 1), f = new T.Group(); f.position.set(a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u - 1.6, a[2] + (b[2] - a[2]) * u); g.add(f); P(box(0.5, 3, 4), cols[i % cols.length], 0, 0, 2, f); f.userData.ph = i; list.push(f); }
+}
+
+var DESIGNS = [
+    ['BATTLESHIP', 'Ironclad battleship', 'Stands alone: it carries no drones, only guns. A fat riveted hull with a ram bow, twin funnels and a signal mast. Two turrets traverse and fire, and four casemate guns along its flanks join in. The searchlights sweep while it has your command link.', 1.0, 'sea', function(g) {
+        var a = { smoke: [], flags: [], lamps: [], sweep: [], turrets: [], flash: [] }, k, s;
+        hull(g, R, 17.4, 86, 0.36, 0, -5.5); hull(g, IRON[0], 17, 84, 0.66);
+        P(box(27, 2.2, 70), WOOD, 0, 15.6, -4, g); P(tor(13.6, 0.5), BRASS, 0, 16.9, -4, g, HP, 0, 0, [1, 2.5, 1]);
+        //  Casemates: bulging gun-houses along each flank.
+        for (k = 0; k < 4; k++) {
+            s = k % 2 ? 1 : -1; var cz = k < 2 ? -22 : 12, c = new T.Group(); c.position.set(s * 14.5, 11, cz); g.add(c);
+            P(sph(7), IRON[0], 0, 0, 0, c, 0, 0, 0, [0.9, 1.05, 1.15]); P(tor(4.2, 0.6), BRASS, s * 5.6, 0, 0, c, 0, HP);
+            P(cyl(1.4, 1.7, 10), DARK, s * 9, 0, 0, c, 0, 0, HP); P(tor(1.8, 0.5), BRASS, s * 13.6, 0, 0, c, 0, HP); P(sph(2.6), REDP[0], s * 5.4, 0, 0, c); a.flash.push(flash(c, s * 16, 0, 0, k * 0.23));
+        }
+        var t1 = turret(g, 0, 20.5, 26, 8, IRON, 2), t2 = turret(g, 0, 20, -40, 6.6, IRON, 2, Math.PI); a.turrets.push(t1, t2); a.flash.push(flash(t1, 0, 0.8, 17, 0.1), flash(t2, 0, 0.7, 14, 0.6));
+        //  Bridge tower with a ring of windows and two searchlights.
+        P(cyl(6.2, 7.4, 13), IRON[0], 0, 23.2, 2, g); P(tor(6.5, 1.1), GLASS, 0, 26.6, 2, g, HP); P(cyl(8, 8, 1.2), DARK, 0, 30.4, 2, g); P(cyl(4, 4.6, 5), IRON[0], 0, 33.4, 2, g); P(cyl(5, 5, 0.9), DARK, 0, 36.2, 2, g);
+        a.sweep.push(lamp(g, -6, 32.8, 6, 1.9, a.lamps, -0.5)); a.sweep.push(lamp(g, 6, 32.8, 6, 1.9, a.lamps, 0.5));
+        stack(g, 0, 16, -14, 22, a.smoke); stack(g, 0, 16, -26, 20, a.smoke);
+        P(cyl(3.2, 3.6, 3), IRON[0], 0, 18, -14, g); P(cyl(3.2, 3.6, 3), IRON[0], 0, 18, -26, g);
+        //  Mast, yard, rigging and signal flags.
+        rod(g, [0, 36, 2], [0, 64, 2], DARK, 0.7); rod(g, [-14, 52, 2], [14, 52, 2], DARK, 0.45); P(cyl(2.2, 2.2, 2.4), IRON[0], 0, 46, 2, g);
+        rod(g, [0, 63, 2], [0, 19, 50], DARK, 0.18); rod(g, [0, 63, 2], [0, 18, -50], DARK, 0.18); rod(g, [-14, 52, 2], [-12, 17, 14], DARK, 0.16); rod(g, [14, 52, 2], [12, 17, 14], DARK, 0.16);
+        flags(g, [0, 63, 2], [0, 19, 50], 5, a.flags); P(box(0.5, 4, 6), R, 0, 62, -1.4, g);
+        //  Bow: brass crest, hawse-holes and anchor chain.
+        P(tor(3.2, 0.9), BRASS, 0, 12, 50.5, g); P(sph(1.6), BRASS, 0, 12, 51, g); P(cyl(1.6, 1.6, 1), DARK, 6.4, 10, 45.6, g, HP, 0.5); P(cyl(1.6, 1.6, 1), DARK, -6.4, 10, 45.6, g, HP, -0.5);
+        for (k = 0; k < 5; k++) { P(tor(1.1, 0.35), DARK, 7.4 + k * 0.5, 8.6 - k * 1.8, 46.6 + k * 0.6, g, k % 2 ? HP : 0, 0.5); }
+        for (k = 0; k < 6; k++) { porthole(g, 15.2 - Math.abs(k - 2.5) * 0.5, 7.5, -30 + k * 11.5); porthole(g, -15.2 + Math.abs(k - 2.5) * 0.5, 7.5, -30 + k * 11.5); }
+        P(box(5, 2.4, 9), CREAM, 9, 18.4, -34, g); P(box(5, 2.4, 9), CREAM, -9, 18.4, -34, g);
+        return a;
+    }],
+    ['SUB DRONE', 'Pocket submersible', 'A brass diving-boat that runs awash, lit from inside. Its bow lamp throws a beam at whatever it is hunting, and the red warhead collar shows it is fitted to strike.', 1.9, 'sea', function(g) {
+        var a = { props: [], lamps: [], bob: g }, k;
+        P(sph(7), BRZ[0], 0, 4, 0, g, 0, 0, 0, [1, 0.95, 2.35]); gloss(g, -2.6, 9.6, 2, 7, 0.9);
+        for (k = -1; k <= 1; k++) { P(tor(6.9 * Math.sqrt(1 - k * k * 0.3), 0.42), DARK, 0, 4, k * 8, g, 0, 0, 0, [1, 0.95, 1]); }
+        P(tor(5.4, 1.1), REDP[0], 0, 4, 11.4, g, 0, 0, 0, [1, 0.95, 1]);
+        for (k = 0; k < 3; k++) { for (var s = -1; s <= 1; s += 2) { var pz = -5 + k * 5, px = s * (6.6 - Math.abs(k - 1) * 0.5); P(cyl(1.5, 1.5, 0.8), BRASS, px, 5, pz, g, 0, 0, HP); P(cyl(1, 1, 1), LAMP, px, 5, pz, g, 0, 0, HP); } }
+        lamp(g, 0, 5.4, 15.6, 2.6, a.lamps); P(box(0.4, 5, 0.4), DARK, 0, 5.4, 17.6, g); P(box(5, 0.4, 0.4), DARK, 0, 5.4, 17.6, g);
+        P(cyl(3, 3.6, 6), BRZ[0], 0, 11.6, -1, g); P(cyl(3.5, 3.5, 1), DARK, 0, 15, -1, g); P(cyl(1.1, 1.1, 0.8), LAMP, 0, 12.4, 2.3, g, HP);
+        rod(g, [1.2, 15, -1], [1.2, 22, -1], BRASS, 0.5); P(box(2.4, 1.2, 1.2), BRASS, 2, 22.4, -1, g);
+        P(box(12, 0.8, 4), R, 0, 4, 7, g); P(box(0.9, 9, 6), R, 0, 7, -15, g); P(box(11, 0.9, 5), R, 0, 4, -15, g);
+        var p = prop(g, 0, 4, -17.6, 9); p.rotation.y = Math.PI; a.props.push(p); P(tor(4.6, 0.5), BRASS, 0, 4, -17.4, g);
+        return a;
+    }],
+    ['AIR CARRIER', 'Sky dreadnought', 'A long armoured hull hung under a broad plank of a wing, driven by six small propellers, with a glazed nose and gun blisters. Drones ride in red pods beneath the wing and drop away one at a time.', 0.8, 'air', function(g) {
+        var a = { props: [], sway: g, lamps: [], pods: [] }, k, s;
+        hull(g, IRON[0], 9.5, 58, 1.0, 0, -8); gloss(g, -4, 9.4, 4, 16, 1.2);
+        P(sph(8), IRON[0], 0, -8, 26, g, 0, 0, 0, [1, 0.9, 1.1]); P(tor(6.8, 1.2), GLASS, 0, -8, 30, g); P(sph(4.4), GLASS, 0, -8, 32.4, g, 0, 0, 0, [1, 1, 0.5]);
+        for (k = 0; k < 5; k++) { porthole(g, 9.2, 1, -18 + k * 8); porthole(g, -9.2, 1, -18 + k * 8); }
+        P(box(118, 2.6, 20), IRON[1], 0, 14, 4, g); P(box(118.4, 1, 3), REDP[1], 0, 15.4, 12, g);
+        for (s = -1; s <= 1; s += 2) {
+            for (k = 0; k < 3; k++) { engine(g, s * (18 + k * 16), 16, 15, 0.72, a.props); }
+            rod(g, [s * 8, 6, 4], [s * 30, 13, 4], DARK, 0.6); rod(g, [s * 8, 6, -2], [s * 30, 13, 0], DARK, 0.6);
+            for (k = 0; k < 2; k++) { var pd = P(sph(3.6), REDP[0], s * (16 + k * 15), 9, 2, g, 0, 0, 0, [1, 1, 2.1]); a.pods.push(pd); rod(g, [s * (16 + k * 15), 12.6, 2], [s * (16 + k * 15), 13, 2], DARK, 0.5); }
+            P(sph(3.4), IRON[0], s * 9.4, 4, 6, g, 0, 0, 0, [0.7, 1, 1]); P(cyl(0.6, 0.6, 7), DARK, s * 12.6, 4, 8, g, HP, 0, -s * 0.5);
+            P(box(1.6, 14, 11), IRON[1], s * 15, 9, -40, g); P(box(1.8, 3.4, 11.2), REDP[1], s * 15, 14.6, -40, g);
+        }
+        P(box(36, 1.8, 10), IRON[1], 0, 5, -40, g); turret(g, 0, 11.6, -8, 4.6, IRON, 2); P(sph(4), GLASS, 0, 1, -34, g, 0, 0, 0, [1, 1, 1.2]);
+        lamp(g, 0, -13, 24, 1.6, a.lamps).rotation.x = 0.6;
+        return a;
+    }],
+    ['AIR DRONE', 'Gyro pod', 'A riveted brass egg with one great glass eye, slung under a four-bladed wooden rotor with a little tail propeller. The eye swivels to whatever it is tracking and the lamp behind it glows.', 2.0, 'air', function(g) {
+        var a = { rotors: [], props: [], lamps: [], bob: g }, k;
+        P(sph(6.6), BRZ[0], 0, 0, 0, g, 0, 0, 0, [1, 1.08, 1.05]); gloss(g, -2.4, 5.4, -1, 3.4, 0.9);
+        P(tor(6.7, 0.5), DARK, 0, 0, 0, g, HP); P(tor(6.3, 0.9), REDP[0], 0, -3.2, 0, g, HP, 0, 0, [1, 1, 1]);
+        var eye = new T.Group(); eye.position.set(0, 0.6, 4.2); g.add(eye);
+        P(tor(4.5, 0.9), BRASS, 0, 0, 1.2, eye); P(sph(4.3), GLASS, 0, 0, 0.6, eye, 0, 0, 0, [1, 1, 0.62]); gloss(eye, -1.4, 1.6, 3.4, 0.5, 1.5, 0, 0.6);
+        var h = new T.Sprite(new T.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: T.AdditiveBlending })); h.scale.set(11, 11, 1); h.position.set(0, 0, 3); eye.add(h); a.lamps.push(h); a.swivel = eye;
+        for (k = -1; k <= 1; k += 2) { P(cyl(1.7, 2.1, 2.6), BRASS, k * 6.3, 0.4, 0.6, g, 0, 0, HP); P(cyl(1.1, 1.1, 2.8), DARK, k * 6.5, 0.4, 0.6, g, 0, 0, HP); }
+        P(cyl(1, 1.4, 4), BRASS, 0, 8.4, 0, g); P(cyl(0.5, 0.5, 4), DARK, 0, 12, 0, g);
+        var r = new T.Group(); r.position.set(0, 14, 0); g.add(r);
+        for (k = 0; k < 4; k++) { var bl = new T.Group(); bl.rotation.y = k * HP; r.add(bl); P(box(1.9, 0.5, 13), WOOD, 0, 0, 8, bl, 0.12); }
+        P(sph(1.5), BRASS, 0, 0, 0, r); a.rotors.push(r);
+        P(box(1.4, 1.4, 13), DARK, 0, 1, -11, g); P(box(0.7, 6, 4.4), REDP[1], 0, 3, -17, g);
+        var tp = new T.Group(); tp.position.set(1.4, 1, -17); tp.rotation.y = HP; g.add(tp); a.props.push(prop(tp, 0, 0, 0, 6));
+        for (k = -1; k <= 1; k += 2) { P(box(1, 1, 15), DARK, k * 4.6, -9.6, 0, g); rod(g, [k * 3, -5.6, 3.4], [k * 4.6, -9.4, 4.4], DARK, 0.4); rod(g, [k * 3, -5.6, -3.4], [k * 4.6, -9.4, -4.4], DARK, 0.4); }
+        return a;
+    }],
+    ['LAUNCH TRUCK', 'Armoured half-track', 'A camouflaged carrier on front wheels and rear tracks, with slit windows and big headlamps. The red launch drum on its back cranks up toward the sea, and its tubes empty as it fires.', 1.0, 'land', function(g) {
+        var a = { wheels: [], smoke: [], lamps: [], flags: [] }, k, s;
+        P(box(17, 7, 46), OLIVE[1], 0, 9.5, 0, g); P(box(16, 10, 14), OLIVE[1], 0, 17.5, 13, g); P(box(15, 6, 9), OLIVE[1], 0, 13, 25, g, 0.25);
+        P(box(11, 2, 0.6), GLASS, 0, 19.4, 20.2, g); P(box(0.6, 2, 5), GLASS, 8.1, 19.4, 14, g); P(box(0.6, 2, 5), GLASS, -8.1, 19.4, 14, g); P(box(17, 1.2, 15), DARK, 0, 23, 13, g);
+        lamp(g, 5.4, 14, 29.4, 1.9, a.lamps); lamp(g, -5.4, 14, 29.4, 1.9, a.lamps); P(box(15, 2.4, 2), DARK, 0, 8, 30.4, g);
+        for (s = -1; s <= 1; s += 2) {
+            wheel(g, s * 9.6, 5.4, 22, 5.4, a.wheels); P(box(4.6, 1.2, 14), OLIVE[1], s * 9.6, 11.6, 22, g);
+            P(box(5.4, 10, 28), TYRE, s * 10, 5.6, -9, g); for (k = 0; k < 4; k++) { P(cyl(2.6, 2.6, 6), BRASS, s * 10.2, 4, -19 + k * 6.6, g, 0, 0, HP); } P(box(6.4, 1.2, 30), OLIVE[1], s * 10, 11.6, -9, g);
+        }
+        var l = new T.Group(); l.position.set(0, 14, -20); g.add(l);
+        P(cyl(7, 7, 24), REDP[0], 0, 6, 12, l, HP); P(tor(7.1, 0.7), BRASS, 0, 6, 2, l); P(tor(7.1, 0.7), BRASS, 0, 6, 22, l);
+        for (k = 0; k < 6; k++) { P(cyl(1.7, 1.7, 0.8), WH, Math.cos(k * 1.047) * 4, 6 + Math.sin(k * 1.047) * 4, 24.3, l, HP); P(tor(1.8, 0.3), DARK, Math.cos(k * 1.047) * 4, 6 + Math.sin(k * 1.047) * 4, 24.4, l); }
+        P(box(3, 8, 3), DARK, -5, 0, 4, l); P(box(3, 8, 3), DARK, 5, 0, 4, l); a.raise = l;
+        stack(g, 7.4, 13, 3, 12, a.smoke); P(box(6, 5, 6), CANVAS, -4, 15.6, 2, g); P(box(5, 4, 5), WOOD, 3, 15, -4, g);
+        rod(g, [-7.4, 23, 8], [-7.4, 40, 8], DARK, 0.3); flags(g, [-7.4, 40, 8], [-7.4, 30, 8], 1, a.flags);
+        return a;
+    }],
+    ['BEACH CRAWLER', 'Tankette', 'A squat, round-shouldered little tank, all track and turret, in beach camouflage. It sits hull-down in the sand, then the turret pops up and turns its red gun on whatever reaches the surf.', 1.9, 'land', function(g) {
+        var a = { lamps: [] }, k, s;
+        P(box(12, 6.4, 19), OLIVE[1], 0, 6.6, 0, g); P(box(11.6, 5, 8), OLIVE[1], 0, 5.4, 10.6, g, 0.5); P(box(11.6, 4, 6), OLIVE[1], 0, 6, -10.4, g, -0.4);
+        for (s = -1; s <= 1; s += 2) {
+            P(box(4.8, 10.4, 26), TYRE, s * 8, 5.6, 0, g); for (k = 0; k < 9; k++) { P(box(5.2, 0.9, 1.6), DARK, s * 8, 11, -12 + k * 3, g); }
+            for (k = 0; k < 4; k++) { P(cyl(2.2, 2.2, 5.4), BRASS, s * 8.2, 3.6, -9 + k * 6, g, 0, 0, HP); P(cyl(0.9, 0.9, 5.8), DARK, s * 8.3, 3.6, -9 + k * 6, g, 0, 0, HP); }
+            P(box(5.6, 1, 22), OLIVE[1], s * 8, 11.9, -1, g);
+        }
+        lamp(g, 3.6, 9, 12.2, 1.4, a.lamps); P(cyl(2.4, 2.4, 0.9), BRASS, -2.6, 10.3, 5, g); P(box(3, 1, 1), DARK, -2.6, 10.9, 5, g);
+        var t = new T.Group(); t.position.set(0, 10, -1.6); g.add(t);
+        P(cyl(4.8, 5.6, 4.4), OLIVE[0], 0, 2, 0, t); P(sph(4.8), OLIVE[0], 0, 4.2, 0, t, 0, 0, 0, [1, 0.5, 1]); P(tor(5.5, 0.45), DARK, 0, 0, 0, t, HP);
+        P(cyl(1.3, 1.5, 9), REDP[0], 0, 2.6, 7.4, t, HP); P(tor(1.6, 0.45), BRASS, 0, 2.6, 11.6, t); P(sph(2), OLIVE[0], 0, 2.6, 4, t); P(cyl(1.8, 1.8, 1), BRASS, 0, 6.8, -1, t);
+        rod(g, [-4.4, 10, -8], [-4.4, 24, -8], DARK, 0.25); P(sph(0.7), R, -4.4, 24, -8, g);
+        a.pop = t; return a;
+    }]
+];
+
+
+
+//  The surface drone: a tiny picket boat with one gun.
+DESIGNS.splice(2, 0, ['SURFACE DRONE', 'Picket launch', 'A little riveted steam launch with one gun-house on its foredeck, a wheelhouse, a stubby funnel and a pennant. Fast, cheap, and the red gun shows its fit.', 1.9, 'sea', function(g) {
+    var a = { smoke: [], lamps: [], flags: [], turrets: [], flash: [] };
+    hull(g, R, 6.5, 27, 0.34, 0, -2); hull(g, IRON[0], 6.3, 26, 0.64);
+    P(box(9.4, 1, 20), WOOD, 0, 6.3, -1, g);
+    var t = turret(g, 0, 8.4, 7, 3, IRON, 1); P(cyl(0.8, 0.8, 4.4), REDP[0], 0, 0.3, 3.6, t, HP); a.turrets.push(t); a.flash.push(flash(t, 0, 0.3, 7.4, 0.3));
+    P(box(6, 4.4, 6), IRON[1], 0, 9, -2.4, g); P(box(6.4, 1.6, 0.6), GLASS, 0, 9.8, 0.7, g); P(box(7, 0.8, 7), DARK, 0, 11.6, -2.4, g);
+    stack(g, 0, 7, -9, 9, a.smoke);
+    rod(g, [0, 12, -2.4], [0, 22, -2.4], DARK, 0.3); flags(g, [0, 22, -2.4], [0, 14, -2.4], 1, a.flags);
+    lamp(g, 0, 12.8, 0.6, 0.9, a.lamps);
+    P(tor(1.2, 0.4), BRASS, 0, 5, 16.6, g);
+    return a;
+}]);
+
+/* ---- The mothership: one big hull that carries the small machines, each kind in its own bay. ---- */
+(function() {
+    var subB = DESIGNS[1][5], boatB = DESIGNS[2][5], gyroB = DESIGNS[4][5];
+    //  Park a small machine aboard, keeping its moving parts alive.
+    function mini(builder, parent, sc, x, y, z, a, ry) {
+        var gg = new T.Group(); gg.scale.setScalar(sc); gg.position.set(x, y, z); gg.rotation.y = ry || 0; parent.add(gg);
+        gg.userData.kind = builder === subB ? 'sub' : builder === boatB ? 'sea' : 'air'; (a.minis = a.minis || []).push(gg);
+        var an = builder(gg) || {}, keys = ['props', 'rotors', 'lamps', 'smoke', 'flags'];
+        for (var k = 0; k < keys.length; k++) { if (an[keys[k]]) { a[keys[k]] = (a[keys[k]] || []).concat(an[keys[k]]); } }
+        return gg;
+    }
+    DESIGNS.unshift(['MOTHERSHIP', 'Ironclad mothership', 'Carries any mix of sub, surface and air drones, each kind in its own bay. Submersibles ride cradles on a stern slipway and slide into the sea. Gyro pods sit on brass-ringed pads amidships and lift straight off. Picket launches wait under the foredeck awning and run down a bow slip. Island bridge, three funnels and a signal mast stand to one side so the deck stays clear. It has only two small guns of its own.', 0.47, 'sea', function(g) {
+        var a = { smoke: [], flags: [], lamps: [], sweep: [], props: [], rotors: [] }, k, s;
+        hull(g, R, 31, 172, 0.34, 0, -9); hull(g, IRON[0], 30.4, 170, 0.6);
+        P(box(52, 2.6, 150), WOOD, 0, 28, -4, g); P(box(54, 1.4, 152), IRON[1], 0, 26.4, -4, g);
+        for (k = 0; k < 11; k++) { var px = 28.6 - Math.pow(Math.abs(k - 4.5) / 5.5, 2.4) * 9; porthole(g, px, 14, -62 + k * 13); porthole(g, -px, 14, -62 + k * 13); }
+        for (k = 0; k < 9; k++) { rod(g, [-25.6, 29, -70 + k * 16], [-25.6, 33, -70 + k * 16], DARK, 0.3); } rod(g, [-25.6, 33, -70], [-25.6, 33, 58], BRASS, 0.3);
+
+        //  Island: bridge, three funnels, mast and rigging, down the starboard side.
+        P(box(15, 12, 62), IRON[1], 18, 35, -2, g); P(box(15.6, 1.2, 62.6), DARK, 18, 41.4, -2, g);
+        for (k = 0; k < 6; k++) { P(box(0.6, 2.6, 4), GLASS, 10.3, 36.6, -24 + k * 9, g); }
+        P(cyl(6.4, 7.6, 14), IRON[0], 18, 48.6, 20, g); P(tor(6.7, 1.2), GLASS, 18, 52, 20, g, HP); P(cyl(8.4, 8.4, 1.2), DARK, 18, 56, 20, g); P(cyl(4, 4.8, 5), IRON[0], 18, 59, 20, g);
+        a.sweep.push(lamp(g, 12, 58.6, 24, 2.1, a.lamps, -0.5)); a.sweep.push(lamp(g, 24, 58.6, 24, 2.1, a.lamps, 0.5));
+        for (k = 0; k < 3; k++) { stack(g, 18, 41, 4 - k * 13, 24 - k * 1.5, a.smoke); P(cyl(3.3, 3.8, 3.4), IRON[0], 18, 43.4, 4 - k * 13, g); }
+        rod(g, [18, 61, 20], [18, 96, 20], DARK, 0.8); rod(g, [4, 80, 20], [32, 80, 20], DARK, 0.5); P(cyl(2.6, 2.6, 2.8), IRON[0], 18, 72, 20, g);
+        rod(g, [18, 95, 20], [0, 30, 86], DARK, 0.2); rod(g, [18, 95, 20], [10, 30, -78], DARK, 0.2);
+        flags(g, [18, 95, 20], [0, 30, 86], 7, a.flags); P(box(0.6, 5, 8), R, 18, 94, 15.6, g);
+        turret(g, 16, 33, 44, 6, IRON, 2); turret(g, 16, 33, -42, 5.4, IRON, 1, Math.PI);
+
+        //  STERN SLIPWAY: submersibles on cradles, and the ramp they slide down.
+        var slip = P(box(26, 1.6, 44), IRON[1], -6, 16, -92, g, 0.56);
+        for (s = -1; s <= 1; s += 2) { rod(g, [-6 + s * 7, 29.6, -52], [-6 + s * 7, 5.6, -108], BRASS, 0.5); }
+        P(box(30, 5, 1.6), REDP[1], -6, 30.4, -78.4, g); P(box(2, 9, 2), DARK, -20, 32, -78, g); P(box(2, 9, 2), DARK, 8, 32, -78, g);
+        mini(subB, g, 0.62, -15, 30.6, -40, a, Math.PI); P(box(9, 1.6, 20), DARK, -15, 29.8, -40, g);
+        a.slide = mini(subB, g, 0.62, -6, 30.6, -62, a, Math.PI); P(box(9, 1.6, 16), DARK, -6, 29.8, -60, g);
+
+        //  FLIGHT PADS: three brass rings amidships, two gyro pods parked and one that lifts off.
+        P(box(34, 1.4, 56), DARK, -7, 29.6, 0, g);
+        for (k = 0; k < 3; k++) { P(tor(7, 0.5), BRASS, -8, 30.5, -18 + k * 18, g, HP); P(box(8, 0.3, 1), WH, -8, 30.5, -18 + k * 18, g); P(box(1, 0.3, 8), WH, -8, 30.5, -18 + k * 18, g); }
+        mini(gyroB, g, 0.7, -8, 37.6, -18, a, 0.4);
+        a.lift = mini(gyroB, g, 0.7, -8, 37.6, 0, a, -0.3); a.liftY = 37.6;
+        mini(gyroB, g, 0.7, -8, 37.6, 18, a, 0.9);
+
+        //  FOREDECK BOAT BAY: picket launches under a canvas awning, and the bow slip they run down.
+        for (s = -1; s <= 1; s += 2) { rod(g, [-20, 29, 40 + s * 12], [-20, 43, 40 + s * 12], DARK, 0.5); rod(g, [4, 29, 40 + s * 12], [4, 43, 40 + s * 12], DARK, 0.5); }
+        P(box(28, 1, 30), CANVAS, -8, 43.6, 40, g, 0, 0, 0.06); P(box(28.6, 1.4, 3), R, -8, 43.4, 55, g);
+        mini(boatB, g, 0.7, -15, 30.2, 40, a); P(box(8, 1.4, 16), DARK, -15, 29.8, 40, g);
+        a.drive = mini(boatB, g, 0.7, -3, 30.2, 46, a); a.driveZ = 46;
+        var ramp = new T.Group(); ramp.position.set(-3, 29, 68); g.add(ramp); P(box(16, 1.6, 34), REDP[1], 0, 0, 17, ramp); P(box(1.2, 3, 34), BRASS, 8, 1.4, 17, ramp); P(box(1.2, 3, 34), BRASS, -8, 1.4, 17, ramp); a.ramp = ramp;
+
+        //  Bow dressing: crest, hawse-pipes, anchor chain.
+        P(tor(5, 1.3), BRASS, 0, 22, 100, g); P(sph(2.4), BRASS, 0, 22, 101, g);
+        for (k = 0; k < 6; k++) { P(tor(1.8, 0.55), DARK, 14 + k * 0.6, 20 - k * 2.8, 88 + k * 0.8, g, k % 2 ? HP : 0, 0.5); }
+        return a;
+    }, true]);
+})();
+
+
+    var NAMES = { mother: 'MOTHERSHIP', bship: 'BATTLESHIP', sub: 'SUB DRONE', sea: 'SURFACE DRONE', airC: 'AIR CARRIER', air: 'AIR DRONE', landC: 'LAUNCH TRUCK', land: 'BEACH CRAWLER' };
+    var SCALE = { air: 1.5, sub: 0.9, sea: 1.0 }, roleMats = {}, baseR = R, baseREDP = REDP;
+    function build(cls, role) {
+        //  Everything drawn in the role colour: the builders read R and REDP when they run.
+        if (!roleMats[role]) { var col = ROLES[role].color; roleMats[role] = [toon(new T.Color(col).getHex()), plated(col)]; }
+        R = roleMats[role][0]; REDP = roleMats[role][1];
+        var g = new T.Group(), inner = new T.Group(), b = null, i;
+        for (i = 0; i < DESIGNS.length; i++) { if (DESIGNS[i][0] === NAMES[cls]) { b = DESIGNS[i][5]; } }
+        inner.scale.setScalar(SCALE[cls] || 1); g.add(inner);
+        g.userData.anim = b(inner) || {};
+        if (g.userData.anim.ramp) { g.userData.anim.ramp.rotation.x = -HP * 0.92; }
+        R = baseR; REDP = baseREDP;
+        return g;
+    }
+    //  Move the working parts. 'o' is the game piece: what it is doing decides what moves.
+    function animate(a, t, o, dt) {
+        var k, busy = o.busy || /^(Firing|Engaging|Attacking)/.test(o.doing || ''), ph = o.id * 0.37;
+        if (a.props) { for (k = 0; k < a.props.length; k++) { a.props[k].rotation.z = t * 26 + k; } }
+        if (a.rotors) { for (k = 0; k < a.rotors.length; k++) { a.rotors[k].rotation.y = t * 16; } }
+        if (a.smoke) { for (k = 0; k < a.smoke.length; k++) { var s = a.smoke[k], sp = (t * 0.45 + s.userData.ph + k * 0.17 + ph) % 1; s.position.set(s.userData.base[0] + Math.sin(sp * 5 + k) * 1.5, s.userData.base[1] + sp * 20, s.userData.base[2] - sp * 12); s.scale.setScalar(0.5 + sp * 1.6); s.visible = sp < 0.92; } }
+        if (a.flags) { for (k = 0; k < a.flags.length; k++) { a.flags[k].rotation.y = Math.sin(t * 4 + a.flags[k].userData.ph) * 0.5 + 0.4; } }
+        if (a.lamps) { for (k = 0; k < a.lamps.length; k++) { a.lamps[k].material.opacity = (o.contact === false && !o.slaved) ? 0.15 : 0.75 + Math.sin(t * 3 + k * 2 + ph) * 0.2; } }
+        if (a.sweep) { for (k = 0; k < a.sweep.length; k++) { a.sweep[k].rotation.y = (k ? 0.5 : -0.5) + Math.sin(t * 0.7 + k * 2) * 0.9; } }
+        if (a.turrets) { for (k = 0; k < a.turrets.length; k++) { a.turrets[k].rotation.y = a.turrets[k].userData.b + Math.sin(t * 0.6 + k * 1.7 + ph) * (busy ? 0.9 : 0.25); } }
+        if (a.flash) { for (k = 0; k < a.flash.length; k++) { var fl = (t * 0.55 + a.flash[k].userData.ph) % 1; a.flash[k].material.opacity = busy ? (fl < 0.07 ? 1 : fl < 0.14 ? 0.4 : 0) : 0; } }
+        if (a.swivel) { a.swivel.rotation.y = Math.sin(t * 1.1 + ph) * 0.5; }
+        //  Launch drum and turret ease up when the piece is fighting, and back down when it is not.
+        a._act = (a._act || 0) + ((busy ? 1 : 0) - (a._act || 0)) * Math.min(1, (dt || 0.016) * 2.5);
+        if (a.raise) { a.raise.rotation.x = -a._act * 0.62; }
+        if (a.pop) { a.pop.position.y = 8.4 + a._act * 2.8; a.pop.rotation.y = Math.sin(t * 0.8 + ph) * a._act; }
+        if (a.pods) { for (k = 0; k < a.pods.length; k++) { a.pods[k].visible = k < o.cargo; } }
+        //  Mothership bays empty as drones leave: show one parked machine per drone still aboard, by kind.
+        if (a.minis) {
+            var left = { sub: 0, sea: 0, air: 0 }, n;
+            if (o.cargoList) { for (k = 0; k < o.cargoList.length; k++) { left[o.cargoList[k].cls]++; } } else { n = o.cargo || 0; left.sub = Math.ceil(n / 3); left.sea = Math.ceil(n / 3); left.air = Math.ceil(n / 3); }
+            for (k = 0; k < a.minis.length; k++) { var kd = a.minis[k].userData.kind; a.minis[k].visible = left[kd] > 0; left[kd]--; }
+        }
+    }
+    return { build: build, animate: animate };
+})();
 
 /* ==================================================================
     PART 3: THE GAME SHELL, HUD, ORDERS, REPORT AND REPLAY
@@ -1165,7 +1580,7 @@ function mmss(t) { t = Math.max(0, Math.ceil(t)); return Math.floor(t / 60) + ':
 
 //  Icons. Silhouettes match the counters on the map.
 var SIL = {
-    seaC: '<path d="M12 1l7 6v16H5V7z"/>', sea: '<path d="M12 3l4.5 6v12h-9V9z"/>',
+    mother: '<path d="M12 0l8 7v17H4V7z"/>', bship: '<path d="M12 1l7 6v16H5V7z"/><circle cx="12" cy="10" r="2.6" fill="#000"/><circle cx="12" cy="17" r="2.6" fill="#000"/>', sea: '<path d="M12 3l4.5 6v12h-9V9z"/>',
     airC: '<path d="M12 1l11 15h-8v6H9v-6H1z"/>', air: '<path d="M12 3l9 17-9-4-9 4z"/>',
     landC: '<path d="M7 2h10v20H7zM4 5h2v14H4zM18 5h2v14h-2z"/>', land: '<path d="M7 6h10v12H7zM4 6h2v12H4zM18 6h2v12h-2z"/>',
     sub: '<ellipse cx="12" cy="12" rx="4.5" ry="10"/>', uav: '<path d="M12 21l9-17-9 4-9-4z"/>', escort: '<path d="M12 21l4.5-6V3h-9v12z"/>',
@@ -1189,6 +1604,12 @@ var FIT_IC = { swarm: 'swarm', heavy: 'heavy', gun: 'gun', interceptor: 'interce
 var TARGET_IC = { landing: 'landing', escort: 'escortT', near: 'near' };
 
 function fitName(role, fit) { for (var i = 0; i < FITS[role].length; i++) { if (FITS[role][i][0] === fit) { return FITS[role][i][1]; } } return fit; }
+function cargoText(list) {
+    var n = {}, out = [], i;
+    for (i = 0; i < list.length; i++) { n[list[i]] = (n[list[i]] || 0) + 1; }
+    for (i in n) { out.push(n[i] + ' ' + CLASSES[i].name.replace(' Drone', '').toLowerCase()); }
+    return out.join(', ');
+}
 function chips(o) {
     var c = ROLES[o.role].color, st = '';
     for (var i = 0; i < STANCES.length; i++) { if (STANCES[i][0] === o.stance) { st = STANCES[i][1]; } }
@@ -1257,7 +1678,7 @@ WelcomeState.prototype.enter = function(game) {
     $('startBtn').onclick = function() { game.moveToState(new PlayState()); };
     if (game.view) { game.view.goTo(0.2, BASE.x, 30); game.view.setWeather('clear'); game.view.sync([], [], { weather: 'clear' }); }
 };
-WelcomeState.prototype.update = function(game, dt) { if (game.view) { game.view.sync([], [], { weather: 'clear' }); } };
+WelcomeState.prototype.update = function(game, dt) { if (game.view) { game.view.setDay(0.04); game.view.sync([], [], { weather: 'clear' }); } };
 
 /* ------------------------------------------------------------------
     Play: the crossing, live.
@@ -1303,9 +1724,10 @@ PlayState.prototype.act = function(game, act, a, b) {
     else if (act === 'closefit') { this.fit = null; }
     else if (act === 'set') {
         t = sim.templates[this.fit];
-        t[a] = b;
+        if (a === 'cargo') { t.cargo = [b, b, b, b]; } else { t[a] = b; }
         if (a === 'role') { t.fit = FITS[b][0][0]; }
     }
+    else if (act === 'slot') { t = sim.templates[this.fit]; var of = CLASSES[this.fit].cargoOf; t.cargo[+a] = of[(of.indexOf(t.cargo[+a]) + 1) % of.length]; }
     else if (act === 'send') { sim.sendNow(); }
     else if (act === 'pause') { this.paused = !this.paused; }
     else if (act === 'speed') { this.speed = this.speed === 1 ? 2 : this.speed === 2 ? 4 : 1; }
@@ -1323,7 +1745,7 @@ PlayState.prototype.renderHangar = function(game) {
         var cls = CLASS_ORDER[i], c = CLASSES[cls], t = sim.templates[cls], cost = unitCost(cls, sim.templates), col = ROLES[t.role].color;
         h += '<div class="card' + (this.arm === cls ? ' arm' : '') + (cost > sim.credits ? ' poor' : '') + '" data-act="arm" data-a="' + cls + '">' +
             '<div class="sil" style="color:' + col + '">' + svg(SIL[cls], 1) + '</div>' +
-            '<div><div class="nm"><span class="key">' + (i + 1) + '</span>' + c.name + '</div><div class="sub" style="color:' + col + '">' + ROLES[t.role].name + ' &middot; ' + fitName(t.role, t.fit) + (c.big ? ' &middot; carries 4 ' + CLASSES[t.cargo].name.toLowerCase() + 's' : '') + '</div></div>' +
+            '<div><div class="nm"><span class="key">' + (i + 1) + '</span>' + c.name + '</div><div class="sub" style="color:' + col + '">' + ROLES[t.role].name + ' &middot; ' + fitName(t.role, t.fit) + (c.cargoN ? ' &middot; carries ' + cargoText(t.cargo) : '') + '</div></div>' +
             '<div class="cost">$' + cost + '<div class="gear" data-act="fit" data-a="' + cls + '">FIT</div></div></div>';
     }
     h += '<div style="color:var(--dim);font-size:10.5px">Big pieces go far and carry four small ones. Small pieces are cheap and short-ranged. Land pieces stay on the coast.</div>';
@@ -1355,9 +1777,13 @@ PlayState.prototype.renderFit = function(game) {
         for (i = 0; i < TARGETS.length; i++) { if (t.target === TARGETS[i][0]) { says = TARGETS[i][2]; } h += tile('target', TARGETS[i][0], t.target === TARGETS[i][0], svg(IC[TARGET_IC[TARGETS[i][0]]]), TARGETS[i][1]); }
         h += '</div><div class="says">' + says + '</div>';
     }
-    if (c.big) {
-        h += '<h2>4 &middot; WHAT DOES IT CARRY? (4 OF THEM)</h2><div class="tiles">';
-        for (i = 0; i < c.cargoOf.length; i++) { var k = c.cargoOf[i], kt = sim.templates[k]; h += tile('cargo', k, t.cargo === k, '<span style="color:' + ROLES[kt.role].color + '">' + svg(SIL[k], 1) + '</span>', CLASSES[k].name + '<br>' + ROLES[kt.role].name); }
+    if (c.cargoN) {
+        h += '<h2>4 &middot; WHAT DOES IT CARRY?' + (c.mixed ? ' CLICK A SLOT TO CHANGE IT' : '') + '</h2><div class="tiles">';
+        if (c.mixed) {
+            for (i = 0; i < t.cargo.length; i++) { var sk = t.cargo[i], st = sim.templates[sk]; h += '<div class="tile on" style="--c:' + ROLES[st.role].color + ';flex:1 1 44px;min-width:44px" data-act="slot" data-a="' + i + '">' + svg(SIL[sk], 1) + CLASSES[sk].name.replace(' Drone', '') + '</div>'; }
+        } else {
+            for (i = 0; i < c.cargoOf.length; i++) { var k = c.cargoOf[i], kt = sim.templates[k]; h += tile('cargo', k, t.cargo[0] === k, '<span style="color:' + ROLES[kt.role].color + '">' + svg(SIL[k], 1) + '</span>', CLASSES[k].name + '<br>' + ROLES[kt.role].name); }
+        }
         h += '</div><div class="says">Carried drones use the fit-out of that drone type at the moment you launch the carrier. They take their orders from the carrier, not from you.</div>';
     }
     h += '<div><b style="color:var(--amber)">$' + unitCost(cls, sim.templates) + '</b> each. Changes apply to the next ones you launch.</div>';
@@ -1368,6 +1794,8 @@ PlayState.prototype.renderPhase = function(game) {
     var sim = game.sim, p = sim.phase, next = p + 1, h, W = WEATHER[sim.weather];
     h = '<div class="cap" style="font-size:9px;letter-spacing:2px;color:var(--dim);font-weight:700">' + (p < 0 ? 'PREPARATION' : 'PHASE ' + (p + 1) + ' OF ' + PHASES.length) + '</div>';
     h += '<div class="nm">' + (p < 0 ? 'BEFORE THE FIRST WAVE' : PHASES[p].name) + '</div>';
+    var hr = 5.5 + sim.dayFrac() * 13.5, df = sim.dayFrac();
+    h += '<div style="color:var(--amber);font-weight:700">DAY ' + (sim.dayIndex + 1) + ' &middot; ' + Math.floor(hr) + ':' + (Math.floor((hr % 1) * 60) < 10 ? '0' : '') + Math.floor((hr % 1) * 60) + ' &middot; ' + (df < 0.18 ? 'SUNRISE' : df > 0.78 ? 'SUNSET' : 'DAYLIGHT') + '</div>';
     if (next < PHASES.length) {
         h += '<div class="row"><div>Next: <b>' + PHASES[next].name + '</b><br>in <b class="warn" style="font-size:15px">' + mmss(sim.nextWave - sim.time) + '</b> &middot; forecast ' + WEATHER[PHASES[next].weather].name + '</div><span class="btn" data-act="send">SEND NOW</span></div>';
     } else { h += '<div class="row"><div>Last phase. <b>' + sim.enemies.length + '</b> contacts remain.</div></div>'; }
@@ -1393,7 +1821,7 @@ PlayState.prototype.renderSel = function(game) {
         el.innerHTML = h; return;
     }
     var can = sim.canCommand(o);
-    h = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div class="nm">' + CLASSES[o.cls].name + ' <span style="color:var(--dim);font-weight:400">hull ' + Math.max(0, Math.ceil(o.hp)) + '/' + o.maxHp + (o.big ? ' &middot; ' + o.cargo + ' drones aboard' : '') + '</span></div>' +
+    h = '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div class="nm">' + CLASSES[o.cls].name + ' <span style="color:var(--dim);font-weight:400">hull ' + Math.max(0, Math.ceil(o.hp)) + '/' + o.maxHp + (CLASSES[o.cls].cargoN ? ' &middot; ' + o.cargo + ' drones aboard' : '') + '</span></div>' +
         '<span class="btn" data-act="recall"' + (can ? '' : ' disabled') + '>RECALL <span class="key">R</span></span></div>';
     h += '<div>' + chips(o) + '</div>';
     h += '<div class="' + (can ? 'ok' : o.slaved ? 'warn' : 'bad') + '">' + svg(IC[can ? 'link' : 'nolink']) + ' ' + (can ? 'IN LINK &mdash; click the map to send it somewhere else.' : o.why + (o.slaved ? '. Select the carrier to move the group.' : '. It is acting on its own fit-out.')) + '</div>';
@@ -1435,8 +1863,8 @@ PlayState.prototype.update = function(game, dt) {
         if (px || pz) { v.panBy(-px * 600 * dt, pz * 500 * dt); }
         var placing = null;
         if (this.arm && this.cursor) { var d = sim.clampDest(this.arm, this.cursor.x, this.cursor.z); placing = { cls: this.arm, role: sim.templates[this.arm].role, x: d.x, z: d.z }; }
-        v.setWeather(sim.weather);
-        v.sync(sim.units, sim.enemies, { time: sim.time, weather: sim.weather, sel: (this.sel && !this.sel.side && !this.sel.dead) ? this.sel : null, placing: placing });
+        v.setWeather(sim.weather); v.setDay(sim.dayFrac());
+        v.sync(sim.units, sim.enemies, { dt: dt, time: sim.time, weather: sim.weather, sel: (this.sel && !this.sel.side && !this.sel.dead) ? this.sel : null, placing: placing });
     }
     this.hudT -= dt;
     if (this.hudT <= 0) {
@@ -1484,7 +1912,7 @@ PlayState.prototype.move = function(game, px, py) { if (game.view) { this.cursor
 PlayState.prototype.keyDown = function(game, k) {
     if (k === 32) { this.act(game, 'pause'); }
     else if (k === 27) { this.arm = null; this.sel = null; this.fit = null; this.sig = ''; this.renderAll(game); }
-    else if (k >= 49 && k <= 54) { this.act(game, 'arm', CLASS_ORDER[k - 49]); }
+    else if (k >= 49 && k <= 56) { this.act(game, 'arm', CLASS_ORDER[k - 49]); }
     else if (k === 70) { this.act(game, 'speed'); }
     else if (k === 82) { this.act(game, 'recall'); }
     else if (k === 66) { this.act(game, 'view', 'base'); }
@@ -1502,10 +1930,10 @@ ReportState.prototype.leave = function() { $('replaybar').classList.add('hidden'
 ReportState.prototype.notes = function() {
     var s = this.sim, out = [], st = s.stats, k;
     if (s.sunk.lst.through + s.sunk.lhd.through > 0) { out.push((s.sunk.lst.through + s.sunk.lhd.through) + ' landing ships reached the beach. Heavy warheads and coast batteries are what stop them; light warheads barely scratch a landing ship.'); }
-    if (s.sunk.sub.through > 0 || st.seaC.lost > 0) { out.push('Undersea drones got through or sank carriers. Only sea units can hear them: put DEFEND sea drones with your carriers.'); }
+    if (s.sunk.sub.through > 0 || st.mother.lost > 0) { out.push('Undersea drones got through or sank a mothership. Only sea and sub units can hear them: put DEFEND sub or surface drones with your big ships.'); }
     if (s.sunk.uav.through > 3) { out.push(s.sunk.uav.through + ' strike UAVs reached the coast. DEFEND units near the beaches, or a decoy offshore, would have taken them.'); }
-    var builtBig = st.seaC.built + st.airC.built, lostBig = st.seaC.lost + st.airC.lost;
-    if (builtBig && lostBig / builtBig > 0.6) { out.push('You lost ' + lostBig + ' of ' + builtBig + ' carriers. They were probably sent beyond your link without scouts or defenders.'); }
+    var builtBig = st.mother.built + st.airC.built + st.bship.built, lostBig = st.mother.lost + st.airC.lost + st.bship.lost;
+    if (builtBig && lostBig / builtBig > 0.6) { out.push('You lost ' + lostBig + ' of ' + builtBig + ' big ships and carriers. They were probably sent beyond your link without scouts or defenders.'); }
     if (s.sunk.jammer.seen && s.sunk.jammer.sunk < s.sunk.jammer.seen) { out.push('EW ships survived and kept cutting your link. Target "Escorts & EW" first, or carry a jammer of your own.'); }
     if (s.credits > 250) { out.push('You ended with $' + s.credits + ' unspent.'); }
     for (k in st) { if (st[k].built >= 4 && st[k].kills === 0 && st[k].lost >= st[k].built * 0.7) { out.push(CLASSES[k].name + 's: ' + st[k].lost + ' lost for no kills.'); } }
@@ -1562,7 +1990,7 @@ ReportState.prototype.update = function(game, dt) {
     for (i = 0; i < f0.u.length; i++) {
         a = f0.u[i]; b = next[a[0]] || a; m = rec.meta[a[0]];
         units.push({ id: a[0], side: 0, cls: m.kind, role: m.role, fit: m.fit, stance: m.stance, dom: CLASSES[m.kind].dom, big: CLASSES[m.kind].big,
-            x: a[1] + (b[1] - a[1]) * k, z: a[2] + (b[2] - a[2]) * k, hp: a[3], maxHp: 1, contact: !!(a[4] & 1), slaved: !!(a[4] & 2), cargo: a[5], heading: a[6] });
+            x: a[1] + (b[1] - a[1]) * k, z: a[2] + (b[2] - a[2]) * k, hp: a[3], maxHp: 1, contact: !!(a[4] & 1), slaved: !!(a[4] & 2), busy: !!(a[4] & 8), cargo: a[5], heading: a[6] });
     }
     for (i = 0; i < f0.e.length; i++) {
         a = f0.e[i]; b = next[a[0]] || a; m = rec.meta[a[0]];
@@ -1574,9 +2002,9 @@ ReportState.prototype.update = function(game, dt) {
         this.last = i0;
         drawGoal(f0.landed, f0.beach.map(Math.round), f0.lost, f0.sunk);
         $('rpSeek').value = i0;
-        $('rpTime').textContent = mmss(f0.t) + '  ' + (f0.phase < 0 ? 'PREPARATION' : 'PHASE ' + (f0.phase + 1)) + '  ' + WEATHER[f0.weather].name;
+        $('rpTime').textContent = 'DAY ' + ((f0.dayN || 0) + 1) + '  ' + mmss(f0.t) + '  ' + (f0.phase < 0 ? 'PREPARATION' : 'PHASE ' + (f0.phase + 1)) + '  ' + WEATHER[f0.weather].name;
     }
-    v.setWeather(f0.weather);
+    v.setWeather(f0.weather); v.setDay(f0.day || 0);
     v.sync(units, enemies, { time: f0.t, weather: f0.weather });
 };
 
@@ -1589,7 +2017,7 @@ try { if (typeof THREE !== 'undefined') { game.view = new View3D(glCanvas); } } 
 
 function resize() {
     //  On very large windows, scale the interface and the map counters up so they stay readable.
-    var ui = clamp(window.innerHeight / 760, 1, 1.9);
+    var ui = clamp(Math.min(window.innerHeight / 760, window.innerWidth / 1250), 1, 1.9);
     document.documentElement.style.setProperty('--ui', ui);
     if (game.view) { game.view.ui = ui; game.view.resize(window.innerWidth, window.innerHeight, Math.min(window.devicePixelRatio || 1, 2)); game.view.placeCam(); }
 }
@@ -1640,11 +2068,12 @@ if (DEBUG_START && game.view) {
     var ps = new PlayState();
     game.moveToState(ps);
     var ds = game.sim, T0 = ds.templates;
-    T0.landC.role = 'strike'; T0.landC.fit = 'heavy'; T0.landC.cargo = 'land';
-    ds.buy('landC', -1000, -30); ds.buy('landC', 1000, -30); ds.buy('seaC', -500, 1300); ds.buy('airC', 500, 1700); ds.buy('air', 0, 500); ds.buy('sea', 200, 700);
+    T0.landC.role = 'strike'; T0.landC.fit = 'heavy'; T0.landC.cargo = ['land', 'land', 'land', 'land']; ds.credits = 900;
+    ds.buy('landC', -300, -30); ds.buy('mother', -260, 420); ds.buy('bship', 240, 360); ds.buy('airC', 80, 620); ds.buy('air', -60, 260); ds.buy('sea', 120, 200); ds.buy('sub', -120, 220); ds.buy('land', 200, -30);
     var until = DEBUG_START === 'play' ? 130 : DEBUG_START === 'late' ? 560 : 4000;
     while (ds.time < until && !ds.over) { ds.step(0.05); ds.events.length = 0; }
     if (DEBUG_START === 'late') { game.view.goTo(0.8, 0, 1500); ps.sel = ds.units[0]; }
+    if (DEBUG_START === 'play') { game.view.goTo(0.3, 0, 330); }
     if (DEBUG_START === 'report' || DEBUG_START === 'replay') {
         if (!ds.over) { ds.finish('lose', 'Debug run ended.'); }
         var rs = new ReportState(ds); game.moveToState(rs);
