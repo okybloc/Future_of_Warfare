@@ -745,7 +745,7 @@ function View3D(canvas) {
     for (i = WORLD.x0; i <= WORLD.x1; i += 425) { gp.push(i, 0.3, 0, i, 0.3, WORLD.far); }
     for (i = 0; i <= WORLD.far; i += 520) { gp.push(WORLD.x0, 0.3, i, WORLD.x1, 0.3, i); }
     var gg = new T.BufferGeometry(); gg.setAttribute('position', new T.Float32BufferAttribute(gp, 3));
-    this.scene.add(new T.LineSegments(gg, new T.LineBasicMaterial({ color: 0x9fd6e6, transparent: true, opacity: 0.13 })));
+    this.scene.add(new T.LineSegments(gg, new T.LineBasicMaterial({ color: 0x9fd6e6, transparent: true, opacity: 0.2 })));
 
     //  Taiwan: coast, three beaches, hills, and your base in the middle.
     var green = new T.MeshStandardMaterial({ color: 0x24402c, roughness: 0.95 }), sand = new T.MeshStandardMaterial({ color: 0xd9c79a, roughness: 0.9 });
@@ -784,10 +784,10 @@ function View3D(canvas) {
     this.wpnRing = this.circle(1, 0xff5a36, 0.8); this.scene.add(this.wpnRing);
     this.relayRing = this.circle(1, 0x45d9ff, 0.6); this.scene.add(this.relayRing);
     this.rangeRing = this.circle(1, 0xffffff, 0.55); this.scene.add(this.rangeRing);
-    this.ghost = new T.Mesh(new T.RingGeometry(26, 34, 32), new T.MeshBasicMaterial({ color: 0xffffff, side: T.DoubleSide, transparent: true, opacity: 0.9 }));
+    this.ghost = new T.Mesh(new T.RingGeometry(26, 34, 32), new T.MeshBasicMaterial({ color: 0xffffff, side: T.DoubleSide, transparent: true, opacity: 0.9, fog: false }));
     this.ghost.rotation.x = -Math.PI / 2; this.scene.add(this.ghost);
     var lg = new T.BufferGeometry(); lg.setAttribute('position', new T.Float32BufferAttribute([0, 0, 0, 0, 0, 0], 3));
-    this.destLine = new T.Line(lg, new T.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); this.destLine.frustumCulled = false; this.scene.add(this.destLine);
+    this.destLine = new T.Line(lg, new T.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, fog: false })); this.destLine.frustumCulled = false; this.scene.add(this.destLine);
     this.jamDiscs = [];
 
     //  Rain.
@@ -807,7 +807,7 @@ View3D.prototype.circle = function(r, color, opacity) {
     var pts = [], i;
     for (i = 0; i <= 96; i++) { pts.push(Math.sin(i / 96 * Math.PI * 2) * r, 0, Math.cos(i / 96 * Math.PI * 2) * r); }
     var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-    var l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: opacity }));
+    var l = new THREE.Line(g, new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: opacity, fog: false }));
     l.position.y = 1.2; l.visible = false; l.frustumCulled = false;
     return l;
 };
@@ -822,7 +822,7 @@ View3D.prototype.label = function(text, color) {
     var c = document.createElement('canvas'); c.width = 256; c.height = 64;
     var g = c.getContext('2d'); g.font = '700 30px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, 8, 256, 48); g.fillStyle = color; g.fillText(text, 128, 33);
-    return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }));
+    return new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false, fog: false }));
 };
 
 /* ---- Flat counters, used when a piece is far away. Shape says what it is, colour says whose and what for. ---- */
@@ -958,11 +958,11 @@ View3D.prototype.entity = function(o) {
     if (!en) {
         en = { g: new T.Group(), key: key, kind: kind };
         var color = o.side ? (kind === 'unknown' ? '#aeb6ba' : '#e23b2e') : ROLES[o.role].color;
-        en.icon = new T.Sprite(new T.SpriteMaterial({ map: this.iconTex(kind, color, o.side === 1 && kind !== 'unknown'), transparent: true, depthTest: false }));
+        en.icon = new T.Sprite(new T.SpriteMaterial({ map: this.iconTex(kind, color, o.side === 1 && kind !== 'unknown'), transparent: true, depthTest: false, fog: false }));
         en.icon.renderOrder = 10; en.g.add(en.icon);
         if (kind !== 'unknown') { en.model = o.side ? this.enemyModel(o) : this.unitModel(o); en.g.add(en.model); }
-        en.bar = new T.Sprite(new T.SpriteMaterial({ color: o.side ? 0xff5a52 : 0x4be07f, depthTest: false })); en.bar.renderOrder = 11; en.g.add(en.bar);
-        if (!o.side) { en.badge = new T.Sprite(new T.SpriteMaterial({ map: this.iconTex('unknown', '#ff8a3c', false), transparent: true, depthTest: false })); en.badge.renderOrder = 12; en.g.add(en.badge); }
+        en.bar = new T.Sprite(new T.SpriteMaterial({ color: o.side ? 0xff5a52 : 0x4be07f, depthTest: false, fog: false })); en.bar.renderOrder = 11; en.g.add(en.bar);
+        if (!o.side) { en.badge = new T.Sprite(new T.SpriteMaterial({ map: this.iconTex('unknown', '#ff8a3c', false), transparent: true, depthTest: false, fog: false })); en.badge.renderOrder = 12; en.g.add(en.badge); }
         this.scene.add(en.g);
         this.ents[o.id] = en;
     }
@@ -1034,7 +1034,7 @@ View3D.prototype.sync = function(units, enemies, ui) {
     var n = 0;
     function disc(x, z, r, color) {
         var m = self.jamDiscs[n];
-        if (!m) { m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.16, depthWrite: false })); m.rotation.x = -Math.PI / 2; self.scene.add(m); self.jamDiscs[n] = m; }
+        if (!m) { m = new THREE.Mesh(new THREE.CircleGeometry(1, 48), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.16, depthWrite: false, fog: false })); m.rotation.x = -Math.PI / 2; self.scene.add(m); self.jamDiscs[n] = m; }
         m.visible = true; m.position.set(x, 0.9, z); m.scale.set(r, r, 1); m.material.color.setHex(color); n++;
     }
     for (i = 0; i < enemies.length; i++) { o = enemies[i]; if (o.et === 'jammer' && o.det === 2) { disc(o.x, o.z, JAM_RADIUS, 0xff3020); } }
@@ -1120,7 +1120,9 @@ View3D.prototype.render = function(dt) {
     var w = this.weather, t = this.want, k = Math.min(1, dt * 0.6), i;
     w.vis += (t.vis - w.vis) * k; w.rain += (t.rain - w.rain) * k; w.dark += (t.dark - w.dark) * k; w.sky.lerp(t.sky, k);
     this.sky.copy(w.sky); this.scene.fog.color.copy(w.sky);
-    this.scene.fog.near = w.vis * 0.18; this.scene.fog.far = w.vis * 1.25;
+    //  Haze is measured from what you are looking at, so zooming out does not white out the map.
+    var cd = this.cam.position.distanceTo(this.target);
+    this.scene.fog.near = cd * 0.55 + w.vis * 0.15; this.scene.fog.far = cd + w.vis * 1.25;
     this.hemi.intensity = 0.95 - w.dark * 0.5; this.sun.intensity = 0.9 - w.dark * 0.8;
     this.rain.material.opacity = w.rain;
     if (w.rain > 0.02) {
