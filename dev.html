@@ -2349,7 +2349,7 @@ glCanvas.addEventListener('pointermove', function(e) {
     if (gest.mode === 'pinch' && ptrCount() >= 2) {
         var p = twoPtrs();
         v.zoomBy(-Math.log(p.d / gest.d) / Math.log(5600 / 150), p.x, p.y);
-        v.panBy(-(p.x - gest.x), p.y - gest.y);
+        v.panBy(p.x - gest.x, p.y - gest.y);
         gest.d = p.d; gest.x = p.x; gest.y = p.y;
         return;
     }
@@ -2357,7 +2357,7 @@ glCanvas.addEventListener('pointermove', function(e) {
     gest.moved += Math.abs(dx) + Math.abs(dy); gest.lx = e.clientX; gest.ly = e.clientY;
     if (gest.mode === 'pinch') { return; }
     if (gest.unit) { if (gest.moved > 10 && s && s.dragMove) { s.dragMove(game, e.clientX, e.clientY); } }
-    else if (gest.btn !== 0 || gest.moved > 8) { gest.mode = 'pan'; v.panBy(-dx, dy); }
+    else if (gest.btn !== 0 || gest.moved > 8) { gest.mode = 'pan'; v.panBy(dx, dy); }
 });
 function ptrEnd(e) {
     var s = game.currentState(), had = !!ptrs[e.pointerId];
