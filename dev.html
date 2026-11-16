@@ -10,7 +10,7 @@
 html,body{height:100%;overflow:hidden;background:#000;font-family:Inter,'Helvetica Neue',Arial,sans-serif;color:var(--text);font-size:12px;user-select:none;}
 #gl{position:fixed;inset:0;width:100%;height:100%;display:block;}
 .hidden{display:none !important;}
-.panel{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;backdrop-filter:blur(4px);}
+.panel{zoom:var(--ui,1);position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;backdrop-filter:blur(4px);}
 .ic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none;}
 .ic.f{fill:currentColor;stroke:none;}
 h2{font-size:10px;letter-spacing:2px;color:var(--dim);font-weight:700;margin-bottom:6px;}
@@ -70,7 +70,7 @@ b{font-weight:700;}
 #banner .t{font-size:30px;font-weight:800;letter-spacing:2px;}
 /* overlay screens */
 #overlay{position:fixed;inset:0;background:rgba(0,0,0,0.78);overflow:auto;padding:26px;display:flex;justify-content:center;align-items:flex-start;}
-.sheet{width:100%;max-width:980px;}
+.sheet{zoom:var(--ui,1);width:100%;max-width:980px;}
 .sheet h1{font-size:54px;font-weight:800;letter-spacing:-1px;line-height:1;}
 .sheet .tag{font-size:11px;letter-spacing:3px;color:var(--dim);font-weight:700;margin:8px 0 18px;}
 .sheet p{font-size:14px;line-height:1.55;color:#cfd6d2;margin-bottom:10px;max-width:760px;}
@@ -708,7 +708,7 @@ function View3D(canvas) {
     this.cam = new T.PerspectiveCamera(45, 1.6, 4, 40000);
     this.zoom = 0.62;
     this.target = new T.Vector3(0, 0, 420);
-    this.w = 800; this.h = 500;
+    this.w = 800; this.h = 500; this.ui = 1;
     this.ray = new T.Raycaster();
     this.ground = new T.Plane(new T.Vector3(0, 1, 0), 0);
     this.ents = {};
@@ -762,9 +762,9 @@ function View3D(canvas) {
     this.add(this.box(340, 11.5, 150, conc), BASE.x, 0.5, BASE.z - 30);
     this.add(this.box(26, 5, 190, conc), BASE.x + 60, 2, 70);
     for (i = 0; i < 3; i++) {
-        this.add(this.box(70, 26, 50, this.mat.hull), BASE.x - 110 + i * 85, 19, BASE.z - 70);
+        this.add(this.box(70, 26, 50, this.mat.hull), BASE.x + [-175, -90, 105][i], 19, BASE.z - 70);
         var roof = new T.Mesh(new T.CylinderGeometry(25, 25, 70, 14, 1, false, 0, Math.PI), this.mat.deck); roof.rotation.z = Math.PI / 2; roof.rotation.y = Math.PI / 2;
-        this.add(roof, BASE.x - 110 + i * 85, 32, BASE.z - 70);
+        this.add(roof, BASE.x + [-175, -90, 105][i], 32, BASE.z - 70);
     }
     this.add(this.cyl(3, 4, 60, conc), BASE.x + 140, 36, BASE.z - 40);
     this.dish = new T.Mesh(new T.ConeGeometry(16, 10, 16, 1, true), this.mat.white); this.dish.rotation.z = Math.PI / 2; this.add(this.dish, BASE.x + 140, 70, BASE.z - 40);
@@ -980,8 +980,8 @@ View3D.prototype.sync = function(units, enemies, ui) {
         en = self.entity(o);
         var y = self.yOf(o);
         en.g.position.set(o.x, y, o.z);
-        var d = cp.distanceTo(en.g.position), unit = d * pxWorld, kind = en.kind;
-        var apparent = (MODEL_LEN[kind] || 20) / unit, showModel = !!en.model && apparent > 7, showIcon = apparent < 34;
+        var d = cp.distanceTo(en.g.position), wpp = d * pxWorld, unit = wpp * self.ui, kind = en.kind;
+        var apparent = (MODEL_LEN[kind] || 20) / wpp, showModel = !!en.model && apparent > 7 * self.ui, showIcon = apparent < 34 * self.ui;
         if (en.model) {
             en.model.visible = showModel; en.model.rotation.y = o.heading || 0;
             if (en.model.userData.spin) { en.model.userData.spin.rotation.z = t * 3; }
@@ -1247,7 +1247,7 @@ WelcomeState.prototype.enter = function(game) {
     h += '<button class="btn go xl" id="startBtn">TAKE COMMAND</button> <span style="color:var(--dim);margin-left:12px">Scroll to zoom &middot; right-drag to pan &middot; SPACE pauses, and you can still give orders while paused.</span>';
     showOverlay(h);
     $('startBtn').onclick = function() { game.moveToState(new PlayState()); };
-    if (game.view) { game.view.goTo(0.16, 0, 260); game.view.setWeather('clear'); game.view.sync([], [], { weather: 'clear' }); }
+    if (game.view) { game.view.goTo(0.1, BASE.x, -60); game.view.setWeather('clear'); game.view.sync([], [], { weather: 'clear' }); }
 };
 WelcomeState.prototype.update = function(game, dt) { if (game.view) { game.view.sync([], [], { weather: 'clear' }); } };
 
@@ -1302,7 +1302,7 @@ PlayState.prototype.act = function(game, act, a, b) {
     else if (act === 'pause') { this.paused = !this.paused; }
     else if (act === 'speed') { this.speed = this.speed === 1 ? 2 : this.speed === 2 ? 4 : 1; }
     else if (act === 'recall') { if (this.sel && !this.sel.side) { if (!sim.recall(this.sel)) { this.say('Cannot recall: ' + this.sel.why + '.', 'bad'); } } }
-    else if (act === 'view') { if (game.view) { if (a === 'base') { game.view.goTo(0.12, 0, 120); } else if (a === 'coast') { game.view.goTo(0.45, 0, 300); } else { game.view.goTo(1, 0, 2300); } } }
+    else if (act === 'view') { if (game.view) { if (a === 'base') { game.view.goTo(0.1, BASE.x, -60); } else if (a === 'coast') { game.view.goTo(0.45, 0, 300); } else { game.view.goTo(1, 0, 2300); } } }
     else if (act === 'quit') { sim.finish('lose', 'You stood the defence down.'); }
     this.sig = '';
     this.renderAll(game);
@@ -1580,7 +1580,10 @@ var glCanvas = $('gl');
 try { if (typeof THREE !== 'undefined') { game.view = new View3D(glCanvas); } } catch (err) { game.view = null; }
 
 function resize() {
-    if (game.view) { game.view.resize(window.innerWidth, window.innerHeight, Math.min(window.devicePixelRatio || 1, 2)); game.view.placeCam(); }
+    //  On very large windows, scale the interface and the map counters up so they stay readable.
+    var ui = clamp(window.innerHeight / 760, 1, 1.9);
+    document.documentElement.style.setProperty('--ui', ui);
+    if (game.view) { game.view.ui = ui; game.view.resize(window.innerWidth, window.innerHeight, Math.min(window.devicePixelRatio || 1, 2)); game.view.placeCam(); }
 }
 window.addEventListener('resize', resize);
 resize();
