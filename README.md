@@ -1,16 +1,21 @@
-# Future of Warfare: System of Autonomous Systems
+# Future of Warfare: Strait Crossing
 
-A program-then-watch take on Space Invaders. You never steer a ship. From a home base you write the doctrine for four classes of unmanned undersea vehicle, choose what they carry, and launch them past your comms boundary. They fight on their own. You read the after-action report, adjust, and run the mission again until your system wins.
+You run an autonomous-systems company on Taiwan's west coast. An invasion fleet crosses the strait in five phases: undersea and air drones first to clear the way, then landing ships led and flanked by unmanned escorts. Keep fewer than 10 landing ships from getting ashore.
 
-Play it: open `index.html` in a browser. It is one self-contained file with no dependencies.
+Play it: open `index.html` in a desktop browser (it needs WebGL). It is one self-contained file.
 
 ## How it plays
 
-1. **Program.** For strikers, interceptors, scouts and decoys, set doctrine cards (station depth, formation, target priority, fire discipline, what to do under fire), two standing orders (IF something happens THEN override a card), a loadout (weapon or sensor plus a system), and runes from a three-tier tree. A map table shows where the doctrine puts every vehicle. Three doctrine pages can be kept and swapped.
-2. **Launch.** Vehicles execute alone. Beyond the comms boundary they cannot hear you. From base you can only deploy reserves (`1 2 3 4`), recall a type that is still in link (`Q W E R`), and use a limited burst recall that reaches everything (`B`). Click the water or the enemy first to mark where the next reserves go. `SPACE` pauses, `F` changes speed, clicking a vehicle shows its telemetry and what it is thinking.
-3. **Review.** The after-action report shows what each type did, plain-language observations, and a battle map of every kill, loss and leak.
-4. **Adjust.** Re-run the same mission until you beat it. Eight missions add tenders, hunters, minelayers, jammers, flankers and a mothership.
+- **Six pieces, shape says what it is.** Sea, air and land, each in two sizes. Big ones (Sea Carrier, Air Carrier, Launch Truck) go far and carry four small ones. Small ones (Sea Drone, Air Drone, Beach Crawler) are cheap and short-ranged.
+- **Colour says what it is for.** Strike (red), Defend (blue), Scout (yellow), Decoy (purple). Each role has two fits, plus a stance and, for strikers, a target priority. Up close the model shows the parts you chose.
+- **Launch on the map.** Click a hangar card (or 1-6), then click the sea. Credits refill each phase and for every ship sunk.
+- **Command link.** You can re-send any unit that is in link with your base, a carrier or a relay scout. Out of range, jammed by an EW ship, or cut off by weather, it acts on its own fit-out. Carried drones take their orders from their carrier.
+- **Weather.** Clear, haze, fog, rain and storm change how far you can see, sense and command. On a clear day at full zoom you can see the far coast.
+- **View.** Scroll to zoom from your base out to the whole strait, right-drag or WASD to pan, B/V for base and strait views, SPACE to pause (orders still work), F for speed.
+- **After-action replay.** The report shows landings, beaches and cost exchange, what each piece type did, and a scrubbable replay of the whole crossing.
 
 ## Credits and licence
 
-Built on [spaceinvaders](https://github.com/dwmkerr/spaceinvaders) by Dave Kerr (MIT License, Copyright (c) 2019 Dave Kerr). The game class, state stack, invader march-and-drop logic, front-rank bombing and the core entities are adapted from that project. This project is released under the same MIT licence; see `LICENSE`.
+This project began as a modification of [spaceinvaders](https://github.com/dwmkerr/spaceinvaders) by Dave Kerr (MIT License, Copyright (c) 2019 Dave Kerr); the game class and state stack descend from that code. 3D rendering uses [three.js](https://github.com/mrdoob/three.js) r128 (MIT), inlined in the page. Released under the MIT licence; see `LICENSE`.
+
+This is a fictional game, not a simulation of real systems or plans.
