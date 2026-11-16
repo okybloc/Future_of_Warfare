@@ -197,7 +197,7 @@ var CLASSES = {
     land:   { name: 'Beach Crawler', dom: 'land', big: false, cost: 5,  hp: 4,  speed: 32,  range: 0, blurb: 'Last line on the sand.' }
 };
 //  Where things happen at the base.
-var DOOR = { x: BASE.x + 20, z: BASE.z - 22 };          //  factory door
+var DOOR = { x: BASE.x + 2, z: BASE.z - 25 };          //  factory door
 var BERTH = { x: BASE.x + 108, z: 112 };                //  where a mothership ties up to the pier
 var STRATEGIES = {
     defend: { name: 'DEFEND', color: '#3aa0ff', reach: 430,  does: 'Drones stay tight around the mothership and only fight what comes close.' },
@@ -368,9 +368,9 @@ Sim.prototype.buy = function(cls, x, z) {
     if (cls === 'mother') {
         u = this.makeUnit(cls, t, BERTH.x, BERTH.z); u.docked = true; u.dest = { x: BERTH.x, z: BERTH.z };
     } else {
-        u = this.makeUnit(cls, t, DOOR.x + (Math.random() * 20 - 10), DOOR.z);
+        u = this.makeUnit(cls, t, DOOR.x + 4, DOOR.z + (Math.random() * 16 - 8)); u.heading = Math.PI / 2; u.fresh = true;
         //  Staging: boats and subs by the pier, gyro pods over the pad, crawlers on the sand.
-        u.dest = c.dom === 'land' ? { x: BASE.x - 260 + Math.random() * 180, z: -28 } : c.dom === 'air' ? { x: BASE.x - 90 + Math.random() * 90, z: -60 + Math.random() * 50 } : { x: BASE.x - (c.dom === 'sub' ? 150 : 60) + Math.random() * 80, z: 55 + Math.random() * 70 };
+        u.dest = c.dom === 'land' ? { x: BASE.x - 260 + Math.random() * 180, z: -28 } : c.dom === 'air' ? { x: BASE.x - 90 + Math.random() * 90, z: -60 + Math.random() * 50 } : { x: BASE.x - (c.dom === 'sub' ? 95 : 20) + Math.random() * 50, z: 55 + Math.random() * 70 };
     }
     u.value = cost;
     if (x !== undefined) { u.dest = this.clampDest(cls, x, z); u.docked = false; }
@@ -528,6 +528,8 @@ Sim.prototype.updateUnit = function(u, dt) {
     var s = u.spec, ax, az, i, e, d;
     u.cool -= dt;
     if (u.emerge > 0) { u.emerge = Math.max(0, u.emerge - dt * 0.8); }
+    //  Fresh from the factory: roll out of the door before doing anything else.
+    if (u.fresh) { if (u.emerge > 0) { u.x += dt * 18; u.doing = 'Rolling out of the factory.'; return; } u.fresh = false; }
     var pushy = u.stance === 'push', reachO = 0;
     if (u.leader && u.leader.dead) { u.leader = null; u.dest = { x: u.x, z: u.z }; }
     u.slaved = !!u.leader;
@@ -929,8 +931,8 @@ function View3D(canvas) {
     }
     this.add(this.box(340, 11.5, 150, conc), BASE.x, 0.5, BASE.z - 30);
     this.add(this.box(26, 5, 190, conc), BASE.x + 60, 2, 70);
-    for (i = 0; i < 3; i++) {
-        var hx = BASE.x + [-175, -90, 105][i];
+    for (i = 0; i < 2; i++) {
+        var hx = BASE.x + [-175, 105][i];
         this.add(this.box(70, 26, 50, this.mat.hull), hx, 19, BASE.z - 70);
         var roof = new T.Mesh(new T.CylinderGeometry(25, 25, 70, 12, 1, false, 0, Math.PI), this.mat.deck); roof.rotation.z = Math.PI / 2; roof.rotation.y = Math.PI / 2;
         this.add(roof, hx, 32, BASE.z - 70);
@@ -940,29 +942,31 @@ function View3D(canvas) {
     this.dish = new T.Mesh(new T.CylinderGeometry(16, 5, 7, 14), this.mat.role.scout); this.dish.rotation.z = Math.PI / 2.4; this.add(this.dish, BASE.x + 140, 72, BASE.z - 40);
 
     //  The drone factory: saw-tooth roof, chimney, and the roller door the drones come out of.
-    var fx = DOOR.x, fz = DOOR.z - 34, wall = this.toon(0xd9c8a0), dark = this.toon(0x2b2f36);
+    var fx = DOOR.x - 52, fz = DOOR.z, wall = this.toon(0xd9c8a0), dark = this.toon(0x2b2f36);
     this.add(this.box(96, 36, 62, wall), fx, 24, fz);
     for (i = 0; i < 3; i++) {
         var saw = new T.Mesh(new T.CylinderGeometry(19, 19, 62, 3, 1), this.mat.deck); saw.rotation.x = Math.PI / 2; saw.rotation.y = Math.PI / 6;
         this.add(saw, fx - 32 + i * 32, 47, fz);
     }
-    this.add(this.box(40, 26, 2, dark), fx, 19, fz + 31.4, null, true);
-    this.add(this.box(46, 4, 3, this.mat.hazard), fx, 34, fz + 31.6, null, true);
-    this.add(this.cyl(4, 5, 46, this.toon(0xb5503c)), fx + 40, 62, fz - 18);
-    this.doorGlow = new T.Mesh(new T.PlaneGeometry(38, 24), new T.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0, fog: false }));
-    this.doorGlow.position.set(fx, 19, fz + 32.6); this.scene.add(this.doorGlow);
+    //  The door is in the east wall, so from the base camera you see machines roll out sideways.
+    this.add(this.box(2, 26, 40, dark), fx + 48.4, 19, fz, null, true);
+    this.add(this.box(3, 4, 46, this.mat.hazard), fx + 48.6, 34, fz, null, true);
+    this.add(this.cyl(4, 5, 46, this.toon(0xb5503c)), fx - 34, 62, fz - 18);
+    this.doorGlow = new T.Mesh(new T.PlaneGeometry(38, 24), new T.MeshBasicMaterial({ color: 0xffe08a, transparent: true, opacity: 0, fog: false, side: T.DoubleSide }));
+    this.doorGlow.rotation.y = Math.PI / 2; this.doorGlow.position.set(fx + 49.8, 19, fz); this.scene.add(this.doorGlow);
     this.puffs = [];
     for (i = 0; i < 4; i++) { var pf = new T.Mesh(new T.SphereGeometry(5, 8, 6), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 })); pf.userData.ph = i / 4; this.scene.add(pf); this.puffs.push(pf); }
-    //  Slipway from the factory door down into the water.
-    this.add(this.box(30, 1.2, 4 - DOOR.z, this.toon(0x7d868d)), fx, 6.3, (DOOR.z + 4) / 2, null, true);
-    var slip = this.box(30, 1.2, 46, this.toon(0x7d868d)); slip.rotation.x = 0.16; this.add(slip, fx, 2.8, 24, null, true);
+    //  Apron outside the door and the slipway down into the water.
+    this.add(this.box(44, 1.2, 50, this.toon(0x7d868d)), DOOR.x + 14, 6.3, DOOR.z, null, true);
+    this.add(this.box(30, 1.2, 4 - DOOR.z, this.toon(0x7d868d)), DOOR.x + 18, 6.3, (DOOR.z + 4) / 2, null, true);
+    var slip = this.box(30, 1.2, 46, this.toon(0x7d868d)); slip.rotation.x = 0.16; this.add(slip, DOOR.x + 18, 2.8, 24, null, true);
     //  Bollards and a crane on the pier where the mothership ties up.
     for (i = 0; i < 4; i++) { this.add(this.cyl(1.6, 2, 4, dark), BASE.x + 70, 6, 40 + i * 38); }
     this.add(this.box(6, 44, 6, this.mat.hazard), BASE.x + 54, 26, BERTH.z - 70);
     this.add(this.box(5, 5, 50, this.mat.hazard), BASE.x + 54, 48, BERTH.z - 52);
     //  Dock workers. They are only animation: a few wander the yard, and pairs carry drones to the ship.
     this.crew = [];
-    var routes = [[-120, -140, -30, -130], [60, -15, 60, 150], [-60, -120, 10, -150], [90, -130, 140, -150], [62, 30, 62, 120]];
+    var routes = [[-150, -130, -20, -125], [60, -15, 60, 150], [40, -150, 60, -110], [90, -130, 140, -150], [62, 30, 62, 120]];
     for (i = 0; i < routes.length; i++) { var wk = this.worker(i % 2 ? 0xf08a2c : 0x2f6fb5); wk.userData.route = routes[i]; wk.userData.ph = i * 1.7; this.scene.add(wk); this.crew.push(wk); }
     this.carry = {};
     this.stratRings = [];
@@ -1032,7 +1036,7 @@ View3D.prototype.walk = function(w, x, z, heading, t, moving, armsUp) {
     w.userData.arms[0].rotation.x = armsUp ? Math.PI : -sw; w.userData.arms[1].rotation.x = armsUp ? Math.PI : sw;
 };
 //  The yard: idle crew, the factory door, and pairs of workers carrying drones along the pier to the mothership.
-var CARRY_PATH = [[DOOR.x, DOOR.z + 6], [DOOR.x + 30, -60], [BASE.x + 60, -18], [BASE.x + 60, BERTH.z], [BERTH.x - 26, BERTH.z]];
+var CARRY_PATH = [[DOOR.x + 6, DOOR.z], [DOOR.x + 30, DOOR.z + 30], [DOOR.x + 40, -70], [BASE.x + 60, -18], [BASE.x + 60, BERTH.z], [BERTH.x - 26, BERTH.z]];
 function alongPath(p) {
     var i, L = [], tot = 0;
     for (i = 1; i < CARRY_PATH.length; i++) { var dx = CARRY_PATH[i][0] - CARRY_PATH[i - 1][0], dz = CARRY_PATH[i][1] - CARRY_PATH[i - 1][1]; L.push(Math.sqrt(dx * dx + dz * dz)); tot += L[i - 1]; }
@@ -1071,7 +1075,7 @@ View3D.prototype.syncYard = function(units, t) {
     this.doorGlow.material.opacity += ((busy > 0 ? 0.85 : 0) - this.doorGlow.material.opacity) * 0.15;
     for (i = 0; i < this.puffs.length; i++) {
         var pf = this.puffs[i], sp = (t * 0.35 + pf.userData.ph) % 1;
-        pf.position.set(DOOR.x + 40 + sp * 14, 88 + sp * 60, DOOR.z - 52); pf.scale.setScalar(0.6 + sp * 2.2); pf.material.opacity = 0.75 * (1 - sp);
+        pf.position.set(DOOR.x - 86 + sp * 14, 88 + sp * 60, DOOR.z - 18); pf.scale.setScalar(0.6 + sp * 2.2); pf.material.opacity = 0.75 * (1 - sp);
     }
 };
 View3D.prototype.circle = function(color, opacity) {
@@ -1912,7 +1916,7 @@ WelcomeState.prototype.enter = function(game) {
     h += '<button class="btn go xl" id="startBtn">TAKE COMMAND</button><div class="tiny">Pinch to zoom &middot; drag to look around &middot; outside the blue link ring your machines think for themselves</div>';
     showOverlay(h);
     $('startBtn').onclick = function() { game.moveToState(new PlayState()); };
-    if (game.view) { game.view.goTo(0.2, BASE.x + 40, 30); game.view.setWeather('clear'); game.view.sync([], [], { weather: 'clear' }); }
+    if (game.view) { game.view.goTo(0.34, BASE.x + 30, -10); game.view.setWeather('clear'); game.view.sync([], [], { weather: 'clear' }); }
 };
 WelcomeState.prototype.update = function(game, dt) { this.t = (this.t || 0) + dt; if (game.view) { game.view.setDay(0.04); game.view.sync([], [], { weather: 'clear', time: this.t, dt: dt }); } };
 
@@ -1931,7 +1935,7 @@ function PlayState() {
 PlayState.prototype.enter = function(game) {
     game.sim = new Sim();
     hideOverlay(); $('hud').classList.remove('hidden'); $('replaybar').classList.add('hidden'); document.body.classList.remove('replay');
-    if (game.view) { game.view.clearFx(); game.view.goTo(0.2, BASE.x + 40, 30); }
+    if (game.view) { game.view.clearFx(); game.view.goTo(0.34, BASE.x + 30, -10); }
     var self = this;
     $('hud').onclick = function(e) {
         var el = e.target;
@@ -1963,7 +1967,7 @@ PlayState.prototype.act = function(game, act, a, b) {
     else if (act === 'send') { sim.sendNow(); }
     else if (act === 'pause') { this.paused = !this.paused; }
     else if (act === 'speed') { this.speed = this.speed === 1 ? 2 : this.speed === 2 ? 4 : 1; }
-    else if (act === 'view') { if (game.view) { if (a === 'base') { game.view.goTo(0.2, BASE.x + 40, 30); } else { game.view.goTo(1, 0, 2300); } } }
+    else if (act === 'view') { if (game.view) { if (a === 'base') { game.view.goTo(0.34, BASE.x + 30, -10); } else { game.view.goTo(1, 0, 2300); } } }
     else if (act === 'quit') { sim.finish('lose', 'You stood the defence down.'); }
     this.renderAll(game);
 };
@@ -2006,7 +2010,7 @@ PlayState.prototype.tapDock = function(game, cls) {
         this.sel = u;
         //  Bring the yard into view if it is off screen, so you see it come out.
         var s = v && v.toScreen({ x: DOOR.x, z: DOOR.z, dom: 'land' });
-        if (v && (s.behind || s.x < 0 || s.x > v.w || s.y < 0 || s.y > v.h)) { v.goTo(0.2, BASE.x + 40, 30); }
+        if (v && (s.behind || s.x < 0 || s.x > v.w || s.y < 0 || s.y > v.h)) { v.goTo(0.34, BASE.x + 30, -10); }
         this.say(cls === 'mother' ? 'Mothership at the pier. Drag drones onto it.' : CLASSES[cls].name + ' built. Tap the sea to send it, or drag it onto the mothership.', 'ok');
     }
     this.renderAll(game);
