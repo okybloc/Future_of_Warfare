@@ -105,6 +105,7 @@ b{font-weight:800;}
 .box{flex:1 1 180px;background:rgba(14,20,28,0.9);border:1px solid var(--line);border-radius:14px;padding:10px 12px;}
 .box .n{font-size:26px;font-weight:900;}
 .leg{display:flex;align-items:center;gap:8px;margin:4px 0;font-size:12px;line-height:1.4;color:#d5dbd8;}
+.txt{font-size:12px;line-height:1.45;color:#d5dbd8;}
 .tiny{color:var(--dim);font-size:11px;margin-top:9px;}
 table{border-collapse:collapse;width:100%;font-size:12px;}
 th,td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--line);}
@@ -1911,10 +1912,10 @@ WelcomeState.prototype.enter = function(game) {
     var h = '<h1>Strait Crossing</h1><div class="tag">FUTURE OF WARFARE &middot; SYSTEM OF AUTONOMOUS SYSTEMS</div>';
     h += '<p>An invasion fleet is crossing the strait in five waves. You run the drone yard on the coast. <b style="color:#fff">Keep fewer than ' + LAND_LIMIT + ' landing ships off the beach.</b></p>';
     h += '<div class="cols">';
-    h += '<div class="box"><h2>1 &middot; BUILD</h2><div class="leg">Tap a button in the dock. The drone rolls out of the factory. Hold the button to change what it is for.</div></div>';
-    h += '<div class="box"><h2>2 &middot; LOAD</h2><div class="leg">Drag drones onto the mothership at the pier. The dock crew carries them aboard: six to a ship.</div></div>';
-    h += '<div class="box"><h2>3 &middot; SEND</h2><div class="leg">Tap the mothership, pick <b style="color:#3aa0ff">DEFEND</b>, <b style="color:#ffd23a">SCREEN</b> or <b style="color:#ff8a1e">ATTACK</b>, then tap the sea. Its drones do the rest.</div></div>';
-    h += '<div class="box"><h2>4 &middot; RAID</h2><div class="leg">Sail an ATTACK mothership all the way across and its drones hit the ports: the next wave comes with fewer landing ships.</div></div>';
+    h += '<div class="box"><h2>1 &middot; BUILD</h2><div class="txt">Tap a button in the dock. The drone rolls out of the factory. Hold the button to change what it is for.</div></div>';
+    h += '<div class="box"><h2>2 &middot; LOAD</h2><div class="txt">Drag drones onto the mothership at the pier. The dock crew carries them aboard: six to a ship.</div></div>';
+    h += '<div class="box"><h2>3 &middot; SEND</h2><div class="txt">Tap the mothership, pick <b style="color:#3aa0ff">DEFEND</b>, <b style="color:#ffd23a">SCREEN</b> or <b style="color:#ff8a1e">ATTACK</b>, then tap the sea. Its drones do the rest.</div></div>';
+    h += '<div class="box"><h2>4 &middot; RAID</h2><div class="txt">Sail an ATTACK mothership all the way across and its drones hit the ports: the next wave comes with fewer landing ships.</div></div>';
     h += '</div>';
     h += '<button class="btn go xl" id="startBtn">TAKE COMMAND</button><div class="tiny">Pinch to zoom &middot; drag to look around &middot; outside the blue link ring your machines think for themselves</div>';
     showOverlay(h);
@@ -2386,9 +2387,10 @@ var dockP = null;
 function dockBtn(el) { while (el && el !== $('dock') && !(el.getAttribute && el.getAttribute('data-cls'))) { el = el.parentNode; } return (el && el !== $('dock')) ? el : null; }
 $('dock').addEventListener('pointerdown', function(e) {
     var el = dockBtn(e.target), s = game.currentState();
+    if (dockP && Date.now() - dockP.t0 > 2500) { clearTimeout(dockP.timer); dockP.el.classList.remove('down'); dockP = null; s.dockPress = false; }
     if (!el || !s || !s.tapDock || dockP) { return; }
     try { el.setPointerCapture(e.pointerId); } catch (err) {}
-    dockP = { id: e.pointerId, cls: el.getAttribute('data-cls'), x0: e.clientX, y0: e.clientY, drag: false, held: false, el: el };
+    dockP = { id: e.pointerId, cls: el.getAttribute('data-cls'), x0: e.clientX, y0: e.clientY, drag: false, held: false, el: el, t0: Date.now() };
     s.dockPress = true; el.classList.add('down');
     dockP.timer = setTimeout(function() { if (dockP && !dockP.drag) { dockP.held = true; el.classList.remove('down'); s.openRoles(game, dockP.cls); } }, 480);
     e.preventDefault();
