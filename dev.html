@@ -190,7 +190,7 @@ function dist(a, b) { var dx = a.x - b.x, dz = a.z - b.z; return Math.sqrt(dx * 
 //  The mothership is a node: it carries six drones past their own range and runs them on a strategy.
 var CLASS_ORDER = ['mother', 'sub', 'sea', 'air', 'land'];
 var CLASSES = {
-    mother: { name: 'Mothership',    dom: 'sea',  big: true,  cost: 45, hp: 44, speed: 38,  range: 5400, cargoN: 6, cargoOf: ['sub', 'sea', 'air'], blurb: 'Carries six drones anywhere in the strait, even to the far coast, and runs them on DEFEND, SCREEN or ATTACK.' },
+    mother: { name: 'Mothership',    dom: 'sea',  big: true,  cost: 45, hp: 44, speed: 44,  range: 5400, cargoN: 6, cargoOf: ['sub', 'sea', 'air'], blurb: 'Carries six drones anywhere in the strait, even to the far coast, and runs them on DEFEND, SCREEN or ATTACK.' },
     sub:    { name: 'Sub Drone',     dom: 'sub',  big: false, cost: 13, hp: 3,  speed: 46,  range: 1700, blurb: 'Runs under the surface. Only undersea drones can touch it.' },
     sea:    { name: 'Surface Drone', dom: 'sea',  big: false, cost: 8,  hp: 3,  speed: 58,  range: 1500, blurb: 'Small fast boat. Hears undersea drones.' },
     air:    { name: 'Air Drone',     dom: 'air',  big: false, cost: 6,  hp: 2,  speed: 135, range: 1300, blurb: 'Small, quick gyro pod.' },
@@ -202,14 +202,14 @@ var BERTH = { x: BASE.x + 108, z: 112 };                //  where a mothership t
 var STRATEGIES = {
     defend: { name: 'DEFEND', color: '#3aa0ff', reach: 430,  does: 'Drones stay tight around the mothership and only fight what comes close.' },
     screen: { name: 'SCREEN', color: '#ffd23a', reach: 640,  does: 'Drones fan out ahead as a picket line and clear escorts and UAVs.' },
-    attack: { name: 'ATTACK', color: '#ff5a36', reach: 1400, does: 'Drones range far out and go for landing ships. At the far coast they raid the ports.' }
+    attack: { name: 'ATTACK', color: '#ff8a1e', reach: 1400, does: 'Drones range far out and go for landing ships. At the far coast they raid the ports.' }
 };
 var STRATEGY_ORDER = ['defend', 'screen', 'attack'];
 
 //  One big choice per unit: what is it for? Colour always means role.
 var ROLE_ORDER = ['strike', 'defend', 'scout', 'decoy'];
 var ROLES = {
-    strike: { name: 'STRIKE', color: '#ff5a36', does: 'Sinks ships.' },
+    strike: { name: 'STRIKE', color: '#ff8a1e', does: 'Sinks ships.' },
     defend: { name: 'DEFEND', color: '#3aa0ff', does: 'Shoots down air drones. On a sea unit it also hunts undersea drones.' },
     scout:  { name: 'SCOUT',  color: '#ffd23a', does: 'Finds and identifies the enemy, and relays your commands further out.' },
     decoy:  { name: 'DECOY',  color: '#b06cff', does: 'Draws enemy fire away, or jams.' }
@@ -248,7 +248,7 @@ var ETYPES = {
     escort: { name: 'Escort USV',     dom: 'sea', hp: 7,  speed: 30,  value: 25,  bounty: 3 },
     jammer: { name: 'EW ship',        dom: 'sea', hp: 9,  speed: 26,  value: 40,  bounty: 6 },
     lst:    { name: 'Landing ship',   dom: 'sea', hp: 18, speed: 25,  value: 60,  bounty: 10, lands: 1 },
-    lhd:    { name: 'Assault ship',   dom: 'sea', hp: 64, speed: 21,  value: 200, bounty: 25, lands: 3 }
+    lhd:    { name: 'Assault ship',   dom: 'sea', hp: 54, speed: 21,  value: 200, bounty: 25, lands: 3 }
 };
 var ETYPE_ORDER = ['sub', 'uav', 'escort', 'jammer', 'lst', 'lhd'];
 
@@ -264,8 +264,8 @@ var PHASES = [
     { name: 'CLEARING THE WAY',   prep: 80, weather: 'clear', brief: 'Undersea drones and strike UAVs come first to break your defences.', groups: [['sub', 7], ['uav', 10]] },
     { name: 'UNMANNED SCREEN',    prep: 75, weather: 'haze',  brief: 'Escort boats and an EW ship push out ahead of the landing force.', groups: [['escort', 8], ['uav', 8], ['jammer', 1], ['sub', 4]] },
     { name: 'FIRST LANDING WAVE', prep: 75, weather: 'fog',   brief: 'The first landing ships, led and flanked by escorts.', groups: [['lst', 8], ['escort', 8], ['uav', 8], ['jammer', 2]] },
-    { name: 'MAIN LANDING FORCE', prep: 80, weather: 'rain',  brief: 'The main body, with an assault ship that counts as three.', groups: [['lst', 11], ['lhd', 1], ['escort', 10], ['uav', 12], ['sub', 6], ['jammer', 2]] },
-    { name: 'FINAL PUSH',         prep: 70, weather: 'storm', brief: 'Everything that is left, in the worst weather.', groups: [['lst', 12], ['lhd', 1], ['escort', 10], ['uav', 14], ['sub', 6], ['jammer', 2]] }
+    { name: 'MAIN LANDING FORCE', prep: 80, weather: 'rain',  brief: 'The main body, with an assault ship that counts as three.', groups: [['lst', 10], ['lhd', 1], ['escort', 10], ['uav', 12], ['sub', 6], ['jammer', 2]] },
+    { name: 'FINAL PUSH',         prep: 70, weather: 'storm', brief: 'Everything that is left, in the worst weather.', groups: [['lst', 10], ['lhd', 1], ['escort', 10], ['uav', 14], ['sub', 6], ['jammer', 2]] }
 ];
 var WAVE_GAP = 105;        //  seconds after a wave appears before the next countdown would end
 var START_CREDITS = 280, PHASE_CREDITS = 240;
@@ -584,6 +584,9 @@ Sim.prototype.updateUnit = function(u, dt) {
                 u.cargo = u.cargoList.length;
                 this.emit({ k: 'msg', text: 'Mothership tied up at the pier. Drag drones onto it to reload.' });
             }
+        } else if (!u.docked && u.z > WORLD.far - 520 && u.strategy === 'attack') {
+            //  Raiding: it stays on the far coast until it has taken real damage, then withdraws by itself.
+            if (u.hp < u.maxHp * 0.4) { u.toPier = true; u.hadStrike = false; this.emit({ k: 'msg', text: 'Raiding mothership badly hit. Withdrawing.' }); }
         } else if (!u.docked && u.cargo === 0 && u.hadStrike && u.strategy !== 'defend') {
             //  Autonomy: once its strike drones are spent it brings itself home to reload.
             var left = 0;
@@ -923,7 +926,7 @@ function View3D(canvas) {
     this.add(this.box(16000, 10, 6000, green), 0, 0, -3000, null, true);
     for (i = 0; i < 3; i++) {
         this.add(this.box(720, 11, 70, sand), BEACHES[i].x, 0.6, -30, null, true);
-        var lab = this.label(BEACHES[i].name); lab.position.set(BEACHES[i].x, 30, -150); this.scene.add(lab); this.labels.push(lab);
+        var lab = this.label(BEACHES[i].name); lab.position.set(BEACHES[i].x + 280, 26, -30); this.scene.add(lab); this.labels.push(lab);
     }
     for (i = 0; i < 26; i++) {
         var hh = 240 + ((i * 97) % 520);
@@ -1910,13 +1913,13 @@ WelcomeState.prototype.enter = function(game) {
     h += '<div class="cols">';
     h += '<div class="box"><h2>1 &middot; BUILD</h2><div class="leg">Tap a button in the dock. The drone rolls out of the factory. Hold the button to change what it is for.</div></div>';
     h += '<div class="box"><h2>2 &middot; LOAD</h2><div class="leg">Drag drones onto the mothership at the pier. The dock crew carries them aboard: six to a ship.</div></div>';
-    h += '<div class="box"><h2>3 &middot; SEND</h2><div class="leg">Tap the mothership, pick <b style="color:#3aa0ff">DEFEND</b>, <b style="color:#ffd23a">SCREEN</b> or <b style="color:#ff5a36">ATTACK</b>, then tap the sea. Its drones do the rest.</div></div>';
+    h += '<div class="box"><h2>3 &middot; SEND</h2><div class="leg">Tap the mothership, pick <b style="color:#3aa0ff">DEFEND</b>, <b style="color:#ffd23a">SCREEN</b> or <b style="color:#ff8a1e">ATTACK</b>, then tap the sea. Its drones do the rest.</div></div>';
     h += '<div class="box"><h2>4 &middot; RAID</h2><div class="leg">Sail an ATTACK mothership all the way across and its drones hit the ports: the next wave comes with fewer landing ships.</div></div>';
     h += '</div>';
     h += '<button class="btn go xl" id="startBtn">TAKE COMMAND</button><div class="tiny">Pinch to zoom &middot; drag to look around &middot; outside the blue link ring your machines think for themselves</div>';
     showOverlay(h);
     $('startBtn').onclick = function() { game.moveToState(new PlayState()); };
-    if (game.view) { game.view.goTo(0.34, BASE.x + 30, -10); game.view.setWeather('clear'); game.view.sync([], [], { weather: 'clear' }); }
+    if (game.view) { game.view.goTo(0.3, BASE.x + 20, -95); game.view.setWeather('clear'); game.view.sync([], [], { weather: 'clear' }); }
 };
 WelcomeState.prototype.update = function(game, dt) { this.t = (this.t || 0) + dt; if (game.view) { game.view.setDay(0.04); game.view.sync([], [], { weather: 'clear', time: this.t, dt: dt }); } };
 
@@ -1935,7 +1938,7 @@ function PlayState() {
 PlayState.prototype.enter = function(game) {
     game.sim = new Sim();
     hideOverlay(); $('hud').classList.remove('hidden'); $('replaybar').classList.add('hidden'); document.body.classList.remove('replay');
-    if (game.view) { game.view.clearFx(); game.view.goTo(0.34, BASE.x + 30, -10); }
+    if (game.view) { game.view.clearFx(); game.view.goTo(0.3, BASE.x + 20, -95); }
     var self = this;
     $('hud').onclick = function(e) {
         var el = e.target;
@@ -1967,7 +1970,7 @@ PlayState.prototype.act = function(game, act, a, b) {
     else if (act === 'send') { sim.sendNow(); }
     else if (act === 'pause') { this.paused = !this.paused; }
     else if (act === 'speed') { this.speed = this.speed === 1 ? 2 : this.speed === 2 ? 4 : 1; }
-    else if (act === 'view') { if (game.view) { if (a === 'base') { game.view.goTo(0.34, BASE.x + 30, -10); } else { game.view.goTo(1, 0, 2300); } } }
+    else if (act === 'view') { if (game.view) { if (a === 'base') { game.view.goTo(0.3, BASE.x + 20, -95); } else { game.view.goTo(1, 0, 2300); } } }
     else if (act === 'quit') { sim.finish('lose', 'You stood the defence down.'); }
     this.renderAll(game);
 };
@@ -2010,7 +2013,7 @@ PlayState.prototype.tapDock = function(game, cls) {
         this.sel = u;
         //  Bring the yard into view if it is off screen, so you see it come out.
         var s = v && v.toScreen({ x: DOOR.x, z: DOOR.z, dom: 'land' });
-        if (v && (s.behind || s.x < 0 || s.x > v.w || s.y < 0 || s.y > v.h)) { v.goTo(0.34, BASE.x + 30, -10); }
+        if (v && (s.behind || s.x < 0 || s.x > v.w || s.y < 0 || s.y > v.h)) { v.goTo(0.3, BASE.x + 20, -95); }
         this.say(cls === 'mother' ? 'Mothership at the pier. Drag drones onto it.' : CLASSES[cls].name + ' built. Tap the sea to send it, or drag it onto the mothership.', 'ok');
     }
     this.renderAll(game);
