@@ -146,6 +146,27 @@ td:first-child,th:first-child{text-align:left;}
 .seg.off{opacity:.45;}
 .btn.up{display:inline-flex;align-items:center;gap:3px;border-color:var(--amber);color:var(--amber);padding:5px 9px;font-size:11px;} .btn.up svg{width:13px;height:13px;}
 .hd .face{width:34px;height:34px;margin:-4px 0;}
+/* v11: works chip, and the mill's floating tags */
+#dock{gap:14px;padding:8px 14px;align-items:flex-start;}
+.wk{min-width:112px;} .wl{font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;min-height:20px;} .wl b{font-size:14px;} .wk .pgw{display:block;margin-top:4px;height:6px;}
+.wk .face{width:22px;height:22px;}
+.ib.off{opacity:.4;}
+#tags{position:fixed;inset:0;pointer-events:none;zoom:var(--ui,1);}
+.tag{position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;border:0;font:inherit;background:#27313c;color:#fff;border-radius:11px;padding:4px 10px 5px;text-align:center;box-shadow:0 4px 0 rgba(0,0,0,.45);white-space:nowrap;opacity:.78;will-change:transform;touch-action:none;}
+.tag b{display:block;font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;}
+.tag span{display:block;font-size:9.5px;opacity:.8;}
+.tag i{display:block;font-style:normal;font-weight:900;font-size:13px;color:#ffb3a8;}
+.tag.ok{background:#2fa24a;opacity:1;animation:tagpulse 1s infinite;}
+.tag.ok i{color:#fff;}
+.tag.max{opacity:.45;cursor:default;}
+.tag:active{box-shadow:0 1px 0 rgba(0,0,0,.45);margin-top:3px;}
+@keyframes tagpulse{50%{filter:brightness(1.18);}}
+.pop{position:absolute;left:0;top:0;color:#fff;font-weight:900;font-size:18px;text-shadow:0 2px 0 #1b6b12,0 0 6px rgba(0,0,0,.5);pointer-events:none;}
+#warn{position:fixed;left:0;top:0;display:none;width:0;height:0;zoom:var(--ui,1);pointer-events:none;}
+#warn div{position:absolute;left:-26px;top:-56px;width:0;height:0;border-left:26px solid transparent;border-right:26px solid transparent;border-bottom:46px solid #e53935;animation:blink .5s infinite;}
+#warn div::after{content:"!";position:absolute;left:-6px;top:9px;color:#fff;font-weight:900;font-size:28px;}
+#warn p{position:absolute;top:-6px;left:-110px;width:220px;margin:0;text-align:center;color:#fff;font-weight:800;font-size:12px;text-shadow:0 1px 3px #000;}
+@keyframes blink{50%{opacity:.35;}}
 </style>
 </head>
 <body>
@@ -159,7 +180,8 @@ td:first-child,th:first-child{text-align:left;}
   <div id="banner" class="panel" style="opacity:0"></div>
   <div id="dock" class="panel live"></div>
   <div id="selp" class="panel live hidden"></div>
-  <div id="dragghost" class="hidden"></div>
+  <div id="tags" class="live"></div>
+  <div id="warn" class="live"><div></div><p>PARTS DOCK FULL &mdash; line stopped. Hire drivers!</p></div>
 </div>
 <div id="replaybar" class="panel hidden"></div>
 <div id="overlay" class="hidden"></div>
@@ -252,7 +274,7 @@ var DRONE_ORDER = ['sub', 'sea', 'air', 'land'];
 var MAX_LV = 3;
 var BUILDINGS = {
     factory: { name: 'Drone Factory', x: DOOR.x - 52, z: DOOR.z, unlock: 0,   up: [90, 180],  does: 'Builds any drone you queue. It takes time; higher levels build faster.' },
-    yard:    { name: 'Drone Yard',    x: BASE.x - 200, z: BASE.z - 40, unlock: 0, up: [60, 120], does: 'Finished drones wait here until an operator takes them. Higher levels hold more.' },
+    yard:    { name: 'Drone Yard',    x: BASE.x - 445, z: BASE.z - 40, unlock: 0, max: 5, up: [60, 120, 220, 400], does: 'Finished drones wait here until an operator takes them. Higher levels hold more.' },
     camp:    { name: 'Boot Camp',     x: BASE.x + 170, z: BASE.z - 80, unlock: 60,  up: [80, 160],  does: 'Trains operators. Each drives a crewed craft with loyal wingman drones: 3, then 4, then 5.' },
     academy: { name: 'Academy',       x: BASE.x + 310, z: BASE.z - 80, unlock: 110, up: [110, 200], does: 'Trains officers. An officer takes a mothership beyond the home link and commands the operators with it.' }
 };
@@ -260,7 +282,7 @@ var BUILDING_ORDER = ['factory', 'camp', 'academy'];
 var TRAIN = { operator: { cost: 25, time: 9, at: 'camp' }, officer: { cost: 50, time: 16, at: 'academy' } };
 var SPEEDUP = [0, 1, 0.7, 0.5];
 var MOTHER_COST = 45, CRAFT_COST = 15;
-function yardCap(lv) { return [0, 8, 14, 22][lv]; }
+function yardCap(lv) { return [0, 8, 14, 22, 30, 40][lv]; }
 function buildTime(cls, lv) { return { sub: 7, sea: 5, air: 4, land: 4 }[cls] * SPEEDUP[lv]; }
 function trainTime(kind, lv) { return TRAIN[kind].time * SPEEDUP[lv]; }
 function wingSize(lv) { return 2 + Math.max(1, lv); }
@@ -341,7 +363,7 @@ var PHASES = [
     { name: 'FINAL PUSH',         prep: 70, weather: 'storm', brief: 'Everything that is left, in the worst weather.', groups: [['lst', 10], ['lhd', 1], ['escort', 10], ['uav', 14], ['sub', 6], ['jammer', 2]] }
 ];
 var WAVE_GAP = 105;        //  seconds after a wave appears before the next countdown would end
-var START_CREDITS = 300, PHASE_CREDITS = 100;
+var START_CREDITS = 140, PHASE_CREDITS = 100;
 var BASE_COMMS = 1900, BASE_RADAR = 2300, JAM_RADIUS = 650;
 
 //  Numbers a unit fights with, from its class, role and fit.
@@ -398,7 +420,8 @@ function Sim() {
     this.raids = 0;
     this.base = { factory: { lv: 1, queue: [] }, yard: { lv: 1 }, camp: { lv: 0, queue: [], ready: [] }, academy: { lv: 0, queue: [], ready: [] } };
     this.stock = [];            //  finished drones waiting in the yard: { cls, tpl }
-    this.bunnyN = 0; this.incomeAcc = 0; this.crewLost = 0;
+    this.bunnyN = 0; this.crewLost = 0;
+    this.line = new Line(this);
     this.stats = {};
     this.sunk = {};
     var i;
@@ -458,15 +481,172 @@ Sim.prototype.buy = function(cls, x, z) {
     return u;
 };
 
-/* ---- The base: unlock, upgrade, build, train. ---- */
+
+/* ==================================================================
+    THE PRODUCTION LINE (ported from Mega Maki Mill, re-skinned).
+    Steel billets roll out of the factory on a belt, the cutter saws them into hull sections,
+    the fitter presses each section into drone kits, the kits pile up in the parts dock, and
+    bunny trucks haul them to the assembly hall. Every kit delivered pays credits, and every
+    few kits become a finished drone in the yard. All distances here are in line units;
+    the 3D view scales and places the whole line on the base.
+   ================================================================== */
+var LINE = { START_X: -16, SLICER_X: -8, DICER_X: -1, CHUTE_X: 0.6, ROLL_R: 1.6, ROLL_L: 6, ROLL_GAP: 4, BELT_Y: 0.5,
+    CELL: 0.6, GN: 15, LAYER: 0.3, BAY_X0: 4.2, BAY_Z0: -4.5, LANE_Z: 10.5, LAYBY_Z: 7.3, SLOTS: [6.2, 9.4, 12.6],
+    SPAWN_X: -30, MARKET_X: 22, EXIT_X: 32, TRUCK_SPEED: 8, MAX_PIECES: 4600,
+    K: 6, OX: BASE.x - 184, OZ: BASE.z - 25 };           //  scale and position of the line on the base
+function lineX(mx) { return LINE.OX - mx * LINE.K; }
+function lineZ(mz) { return LINE.OZ - mz * LINE.K; }
+var KITS_PER_DRONE = 12, HALL_TIME = 7.5;      //  kits per drone, and the fastest the assembly hall can turn one out
+var UP = {
+    speed:  { name: 'Belt speed',     base: 40, mult: 1.9, max: 14, at: [-13, 0, 4.2],  fx: function(l) { return (1 + 0.15 * l).toFixed(2) + 'x'; } },
+    slices: { name: 'Cutter',         base: 30, mult: 1.9, max: 9,  at: [-8, 0, 4.6],   fx: function(l) { return (6 + 2 * l) + ' sections'; } },
+    dice:   { name: 'Fitter',         base: 60, mult: 2.2, max: 8,  at: [-1.5, 0, 4.6], fx: function(l) { return (2 + 2 * l) + ' kits each'; } },
+    bay:    { name: 'Parts dock',     base: 50, mult: 1.8, max: 10, at: [15.8, 0, -1],  fx: function(l) { return 'holds ' + (300 + 250 * l); } },
+    trucks: { name: 'Hire a driver',  base: 35, mult: 1.9, max: 11, at: [-6, 0, 13.6],  fx: function(l) { return (1 + l) + ' trucks'; } },
+    load:   { name: 'Truck size',     base: 45, mult: 1.8, max: 12, at: [3, 0, 13.6],   fx: function(l) { return 'carries ' + (20 + 15 * l); } },
+    value:  { name: 'Contract price', base: 80, mult: 2.3, max: 15, at: [20, 0, 14],    fx: function(l) { return '$' + (1 + l) + ' a kit'; } }
+};
+var UP_ORDER = ['speed', 'slices', 'dice', 'bay', 'trucks', 'load', 'value'];
+//  What the assembly hall turns kits into.
+var MIXES = [
+    { name: 'Balanced',     seq: ['sea', 'sub', 'air', 'sub', 'sea', 'land'] },
+    { name: 'Ship killers', seq: ['sub', 'sea', 'sub', 'air'] },
+    { name: 'Screen',       seq: ['sea', 'air', 'sea', 'air', 'sub'] },
+    { name: 'Beach',        seq: ['land', 'land', 'air'] }
+];
+function fmt(n) { n = Math.floor(n); if (n < 1e4) { return String(n); } if (n < 1e6) { return (n / 1e3).toFixed(1) + 'K'; } if (n < 1e9) { return (n / 1e6).toFixed(2) + 'M'; } return (n / 1e9).toFixed(2) + 'B'; }
+function lineHash(a, b) { var h = (a * 374761393 + b * 668265263) | 0; h = (h ^ (h >> 13)) * 1274126177 | 0; return ((h ^ (h >> 16)) >>> 0) / 4294967296; }
+function lineGauss() { return (Math.random() + Math.random() + Math.random() - 1.5) / 1.5; }
+
+function Line(sim) {
+    this.sim = sim; this.lv = {};
+    for (var i = 0; i < UP_ORDER.length; i++) { this.lv[UP_ORDER[i]] = 0; }
+    this.discs = []; this.sinceSpawn = 1e9;
+    this.H = new Int16Array(LINE.GN * LINE.GN); this.pile = 0; this.flights = []; this.jam = false;
+    this.trucks = []; this.slotBusy = [null, null, null];
+    this.time = 0; this.lastTick = 0; this.bladeDrop = 0; this.pressT = 0;
+    this.earned = 0; this.rateT = 0; this.rateWin = []; this.rate = 0;
+    this.kits = 0; this.mix = 0; this.seqI = 0;
+    this.sfx = []; this.pops = [];          //  sounds and '+$' pop-ups for the page to play; not part of the replay
+    this.syncTrucks();
+}
+Line.prototype.cost = function(k) { return Math.round(UP[k].base * Math.pow(UP[k].mult, this.lv[k]) / 5) * 5; };
+Line.prototype.beltV = function() { return 1.6 * (1 + 0.15 * this.lv.speed); };
+Line.prototype.nSlices = function() { return 6 + 2 * this.lv.slices; };
+Line.prototype.nDice = function() { return 2 + 2 * this.lv.dice; };
+Line.prototype.bayCap = function() { return 300 + 250 * this.lv.bay; };
+Line.prototype.truckCap = function() { return 20 + 15 * this.lv.load; };
+Line.prototype.pieceValue = function() { return 1 + this.lv.value; };
+Line.prototype.beep = function(f, dur, delay) { if (this.sfx.length < 12) { this.sfx.push([f, dur, delay || 0]); } };
+Line.prototype.buy = function(k) {
+    if (this.lv[k] >= UP[k].max) { return false; }
+    var c = this.cost(k);
+    if (this.sim.credits < c) { this.beep(160, 0.08); return false; }
+    this.sim.credits -= c; this.lv[k]++; this.beep(520, 0.07); this.beep(780, 0.09, 0.06); this.syncTrucks();
+    return true;
+};
+Line.prototype.spawnRoll = function() { var n = this.nSlices(), th = LINE.ROLL_L / n; for (var i = 0; i < n; i++) { this.discs.push({ x: LINE.START_X - 3 - (i + 0.5) * th, th: th, cut: false, hop: 0 }); } };
+Line.prototype.landPiece = function(ix, iz) {
+    var GN = LINE.GN, H = this.H, nb = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (var s = 0; s < 40; s++) {
+        var h = H[ix + iz * GN], bi = -1, bh = h - 1;
+        for (var q = 0; q < 4; q++) { var nx = ix + nb[q][0], nz = iz + nb[q][1]; if (nx < 0 || nz < 0 || nx >= GN || nz >= GN) { continue; } var nh = H[nx + nz * GN] + lineHash(nx * 31 + s, nz) * 0.5; if (nh < bh) { bh = nh; bi = q; } }
+        if (bi < 0) { break; } ix += nb[bi][0]; iz += nb[bi][1];
+    }
+    H[ix + iz * GN]++; this.pile++; this.dirty = true;
+};
+Line.prototype.takePiece = function() {         //  remove from a tall column, biased to the truck side
+    var GN = LINE.GN, H = this.H, best = -1, bh = 0;
+    for (var s = 0; s < 10; s++) { var ix = (Math.random() * GN) | 0, iz = GN - 1 - ((Math.random() * Math.random() * GN) | 0), h = H[ix + iz * GN]; if (h > bh) { bh = h; best = ix + iz * GN; } }
+    if (best < 0) { for (var i = 0; i < GN * GN; i++) { if (H[i] > bh) { bh = H[i]; best = i; } } }
+    if (best < 0) { return false; } H[best]--; this.pile--; this.dirty = true; return true;
+};
+Line.prototype.launch = function(z0) {
+    var GN = LINE.GN, tx = Math.max(0, Math.min(GN - 1, Math.round(3.2 + lineGauss() * 3.2))), tz = Math.max(0, Math.min(GN - 1, Math.round(GN / 2 - 0.5 + lineGauss() * 4.5)));
+    this.flights.push({ x0: LINE.CHUTE_X, y0: 1.9, z0: z0, ix: tx, iz: tz, t: -Math.random() * 0.25, T: 0.55 + Math.random() * 0.35, id: (Math.random() * 1e6) | 0 });
+};
+Line.prototype.syncTrucks = function() {
+    while (this.trucks.length < 1 + this.lv.trucks) { this.trucks.push({ id: this.trucks.length, seed: 11 + this.trucks.length * 37, state: 'queue', x: LINE.SPAWN_X - this.trucks.length * 4.5, z: LINE.LANE_Z, load: 0, slot: -1, wait: 0, acc: 0, rot: 0 }); }
+};
+function slotZ(x, sx) { var d = Math.min(1, Math.abs(sx - x) / 4), e = 1 - d; e = e * e * (3 - 2 * e); return LINE.LANE_Z + (LINE.LAYBY_Z - LINE.LANE_Z) * e; }
+//  Kits arriving at the assembly hall: cash for every one, and a finished drone for every dozen while the yard has room.
+Line.prototype.deliver = function(n) {
+    var sim = this.sim, earn = n * this.pieceValue();
+    sim.credits += earn; this.earned += earn; this.pops.push({ text: '+$' + fmt(earn), x: LINE.MARKET_X + 3, y: 6, z: LINE.LANE_Z });
+    this.beep(880, 0.08); this.beep(1320, 0.1, 0.07);
+    this.kits = Math.min(this.kits + n, KITS_PER_DRONE * 4);
+};
+//  The assembly hall turns kits into drones one at a time, in the order of the chosen mix.
+Line.prototype.assemble = function(dt) {
+    var sim = this.sim, seq = MIXES[this.mix].seq;
+    this.hallT = Math.max(0, (this.hallT || 0) - dt);
+    if (this.hallT > 0 || this.kits < KITS_PER_DRONE || sim.stock.length >= yardCap(sim.base.yard.lv)) { return; }
+    this.kits -= KITS_PER_DRONE; this.hallT = HALL_TIME;
+    var cls = seq[this.seqI++ % seq.length];
+    sim.stock.push({ cls: cls, tpl: JSON.parse(JSON.stringify(sim.templates[cls])) }); sim.stats[cls].built++;
+    this.beep(660, 0.06);
+};
+Line.prototype.updateTrucks = function(dt) {
+    var self = this, trucks = this.trucks, L = LINE;
+    var q = trucks.filter(function(t) { return t.state === 'queue'; }).sort(function(a, b) { return b.x - a.x; });
+    for (var i = 0; i < q.length; i++) {
+        var t = q[i], target = 1.5 - i * 4.6;
+        if (i > 0) { target = Math.min(target, q[i - 1].x - 4.6); }
+        t.x = Math.min(target, t.x + L.TRUCK_SPEED * dt); t.z = L.LANE_Z;
+        if (i === 0 && t.x > -14) {     //  front truck takes the furthest free slot
+            for (var s = L.SLOTS.length - 1; s >= 0; s--) { if (!this.slotBusy[s]) { this.slotBusy[s] = t; t.slot = s; t.state = 'toSlot'; break; } }
+        }
+    }
+    trucks.forEach(function(t) {
+        var pz = t.z, px = t.x, sx = t.slot >= 0 ? L.SLOTS[t.slot] : 0;
+        if (t.state === 'toSlot') {
+            t.x = Math.min(sx, t.x + L.TRUCK_SPEED * dt); t.z = slotZ(t.x, sx);
+            if (t.x >= sx) { t.state = 'loading'; t.wait = 0; t.acc = 0; }
+        } else if (t.state === 'loading') {
+            var cap = self.truckCap(); t.acc += (30 + cap * 0.8) * dt;
+            while (t.acc >= 1 && t.load < cap) { t.acc -= 1; if (self.takePiece()) { t.load++; t.wait = 0; } else { t.acc = 0; break; } }
+            if (self.pile === 0) { t.wait += dt; }
+            if (t.load >= cap || (t.load > 0 && t.wait > 1.2)) { t.state = 'leaving'; }
+        } else if (t.state === 'leaving') {
+            t.x += L.TRUCK_SPEED * dt; if (t.slot >= 0) { t.z = slotZ(t.x, sx); if (t.x > sx + 4) { self.slotBusy[t.slot] = null; t.slot = -1; t.z = L.LANE_Z; } }
+            if (t.load > 0 && t.x >= L.MARKET_X + 3) { self.deliver(t.load); t.load = 0; }
+            if (t.x > L.EXIT_X + 6) { t.state = 'away'; t.wait = 1.2; }
+        } else if (t.state === 'away') {
+            t.wait -= dt; if (t.wait <= 0) { var minx = L.SPAWN_X; trucks.forEach(function(o) { if (o !== t && o.state === 'queue') { minx = Math.min(minx, o.x - 4.6); } }); t.x = minx; t.z = L.LANE_Z; t.state = 'queue'; }
+        }
+        var dx = t.x - px, dz = t.z - pz; t.rot = Math.abs(dx) > 1e-4 ? Math.atan2(-dz, dx) : t.rot * 0.8;
+    });
+};
+Line.prototype.step = function(dt) {
+    var L = LINE, i;
+    this.time += dt;
+    var cap = this.bayCap(), pending = this.pile + this.flights.length;
+    if (!this.jam && pending >= cap) { this.jam = true; this.beep(200, 0.25); } else if (this.jam && this.pile < cap * 0.85) { this.jam = false; }
+    var v = this.jam ? 0 : this.beltV();
+    this.v = v; this.beltOff = (this.beltOff || 0) - v * dt * 0.5; this.sinceSpawn += v * dt;
+    if (this.sinceSpawn >= L.ROLL_L + L.ROLL_GAP) { this.sinceSpawn = 0; this.spawnRoll(); }
+    var D = this.nDice();
+    for (i = this.discs.length - 1; i >= 0; i--) {
+        var d = this.discs[i]; d.x += (d.x < L.SLICER_X ? v : v * 2.2) * dt; d.hop = Math.max(0, d.hop - dt * 4);
+        if (!d.cut && d.x - d.th / 2 >= L.SLICER_X) { d.cut = true; d.hop = 1; this.bladeDrop = 1; if (this.time - this.lastTick > 0.05) { this.lastTick = this.time; this.beep(300 + Math.random() * 60, 0.04); } }
+        if (d.x >= L.DICER_X) { this.discs.splice(i, 1); this.pressT = 1; for (var k = 0; k < D; k++) { this.launch((Math.random() - 0.5) * 2.6); } if (this.time - this.lastTick > 0.05) { this.lastTick = this.time; this.beep(190, 0.05); } }
+    }
+    for (i = this.flights.length - 1; i >= 0; i--) { var f = this.flights[i]; f.t += dt; if (f.t >= f.T) { this.landPiece(f.ix, f.iz); this.flights.splice(i, 1); } }
+    this.updateTrucks(dt); this.assemble(dt);
+    this.bladeDrop = Math.max(0, this.bladeDrop - dt * 5); this.pressT = Math.max(0, this.pressT - dt * 5);
+    this.rateT += dt;
+    if (this.rateT >= 1) { this.rateWin.push(this.earned / this.rateT); if (this.rateWin.length > 12) { this.rateWin.shift(); } this.earned = 0; this.rateT = 0; this.rate = this.rateWin.reduce(function(a, b) { return a + b; }, 0) / this.rateWin.length; }
+};
+
+/* ---- The base: unlock, upgrade, train. ---- */
 Sim.prototype.spend = function(cost, what) {
     if (cost > this.credits) { this.emit({ k: 'msg', text: 'Not enough credits for ' + what + ' ($' + cost + ').', bad: true }); return false; }
     this.credits -= cost; return true;
 };
-Sim.prototype.upgradeCost = function(key) { var b = this.base[key]; return b.lv === 0 ? BUILDINGS[key].unlock : b.lv >= MAX_LV ? 0 : BUILDINGS[key].up[b.lv - 1]; };
+Sim.prototype.upgradeCost = function(key) { var b = this.base[key]; return b.lv === 0 ? BUILDINGS[key].unlock : b.lv >= (BUILDINGS[key].max || MAX_LV) ? 0 : BUILDINGS[key].up[b.lv - 1]; };
 Sim.prototype.upgrade = function(key) {
     var b = this.base[key], B = BUILDINGS[key];
-    if (b.lv >= MAX_LV) { return false; }
+    if (b.lv >= (B.max || MAX_LV)) { return false; }
     if (!this.spend(this.upgradeCost(key), b.lv ? 'the upgrade' : 'the ' + B.name)) { return false; }
     b.lv++;
     this.emit({ k: 'msg', text: B.name + (b.lv === 1 ? ' opened.' : ' upgraded to level ' + b.lv + '.'), good: true });
@@ -501,16 +681,7 @@ Sim.prototype.takeStock = function(cls, n) {
 };
 Sim.prototype.stepBase = function(dt) {
     var b = this.base, q, i, kinds = ['camp', 'academy'];
-    this.incomeAcc += incomeRate(b) * dt;
-    while (this.incomeAcc >= 1) { this.incomeAcc -= 1; this.credits++; }
-    q = b.factory.queue;
-    if (q.length) {
-        q[0].t -= dt;
-        if (q[0].t <= 0) {
-            if (this.stock.length < yardCap(b.yard.lv)) { var d = q.shift(); this.stock.push({ cls: d.cls, tpl: d.tpl }); this.stats[d.cls].built++; this.emit({ k: 'built', cls: d.cls }); }
-            else { q[0].t = 0; }
-        }
-    }
+    this.line.step(dt);
     for (i = 0; i < 2; i++) {
         q = b[kinds[i]].queue;
         if (q.length) { q[0].t -= dt; if (q[0].t <= 0) { var g = q.shift(); b[kinds[i]].ready.push(g.bunny); this.emit({ k: 'msg', text: (g.bunny.rank === 'officer' ? 'Officer ' : 'Operator ') + g.bunny.name + ' is ready for duty.', good: true }); } }
@@ -534,7 +705,7 @@ Sim.prototype.commission = function() {
 Sim.prototype.launchFlight = function(craft, board) {
     var c = this.base.camp, C = CLASSES[craft], size = wingSize(c.lv), dm = this.dockedMother();
     if (!c.ready.length) { this.emit({ k: 'msg', text: 'No operator is ready. Train one at the Boot Camp.', bad: true }); return null; }
-    if (!this.stockOf(C.wing)) { this.emit({ k: 'msg', text: 'No ' + CLASSES[C.wing].name + 's in the yard. Build some at the Factory.', bad: true }); return null; }
+    if (!this.stockOf(C.wing)) { this.emit({ k: 'msg', text: 'No ' + CLASSES[C.wing].name + 's in the yard yet. The line is building them.', bad: true }); return null; }
     if (!this.spend(CRAFT_COST, 'a ' + C.name)) { return null; }
     var f = { craft: craft, bunny: c.ready.shift(), wings: this.takeStock(C.wing, size), size: size };
     this.stats[craft].built++; this.stats[craft].spent += CRAFT_COST;
@@ -1144,7 +1315,7 @@ function View3D(canvas) {
         var hh = 240 + ((i * 97) % 520);
         this.add(new T.Mesh(new T.ConeGeometry(hh * 1.25, hh, 6), i % 3 ? green : greenDark), -6500 + i * 520 + ((i * 53) % 200), hh / 2, -900 - ((i * 131) % 1400));
     }
-    this.add(this.box(800, 11.5, 190, conc), BASE.x + 50, 0.5, BASE.z - 45);
+    this.add(this.box(1030, 11.5, 200, conc), BASE.x - 30, 0.5, BASE.z - 50);
     this.add(this.box(26, 5, 190, conc), BASE.x + 60, 2, 70);
     this.add(this.cyl(3, 4, 60, conc), BASE.x + 240, 36, BASE.z - 20);
     this.dish = new T.Mesh(new T.CylinderGeometry(16, 5, 7, 14), this.mat.role.scout); this.dish.rotation.z = Math.PI / 2.4; this.add(this.dish, BASE.x + 240, 72, BASE.z - 20);
@@ -1195,6 +1366,7 @@ function View3D(canvas) {
         self.bld[key] = { built: built, locked: locked, stars: stars };
     }
     site('factory', null);
+    this.buildLine();
     site('yard', function(g) {
         self.add(self.box(118, 0.8, 100, self.tm('#6c757d')), 0, 0.5, 0, g, true);
         self.add(self.box(118, 1, 2, self.mat.hazard), 0, 0.7, 50, g, true); self.add(self.box(118, 1, 2, self.mat.hazard), 0, 0.7, -50, g, true);
@@ -1307,6 +1479,108 @@ View3D.prototype.bunny = function(seed, rank) {
 };
 View3D.prototype.worker = function() { return this.bunny(1 + Math.floor(Math.random() * 9999), 'dock'); };
 //  Buildings, the drones parked in the yard, and the bunnies training or waiting outside.
+
+/* ---- The production line (from Mega Maki Mill), drawn in line units inside one scaled, turned group. ---- */
+View3D.prototype.buildLine = function() {
+    var T = THREE, L = LINE, self = this, g = new T.Group(), i;
+    g.position.set(L.OX, 6.3, L.OZ); g.rotation.y = Math.PI; g.scale.setScalar(L.K); this.scene.add(g);
+    function box(w, h, d, c, x, y, z, parent, ink) { return self.add(new T.Mesh(new T.BoxGeometry(w, h, d), typeof c === 'string' ? self.tm(c) : c), x, y, z, parent || g, !ink); }
+    var ln = this.ln = { g: g, trucks: [] };
+    //  parts dock pad, road, lay-by, lane marks
+    box(11, 0.2, 11, '#b9c0c4', 8.7, 0.1, 0);
+    box(72, 0.16, 3.4, '#5b6269', 4, 0.08, L.LANE_Z); box(11, 0.16, 3.2, '#6a7178', 9.4, 0.08, L.LAYBY_Z);
+    for (i = -30; i < 40; i += 4) { box(1.6, 0.02, 0.18, '#f2f2f2', i, 0.17, L.LANE_Z); }
+    //  belt
+    var bc = document.createElement('canvas'); bc.width = 64; bc.height = 64; var bx = bc.getContext('2d');
+    bx.fillStyle = '#34506e'; bx.fillRect(0, 0, 64, 64); bx.strokeStyle = '#6f93b8'; bx.lineWidth = 8; bx.beginPath(); bx.moveTo(8, 0); bx.lineTo(40, 32); bx.lineTo(8, 64); bx.stroke();
+    ln.beltTex = new T.CanvasTexture(bc); ln.beltTex.wrapS = ln.beltTex.wrapT = T.RepeatWrapping; ln.beltTex.repeat.set(12, 1);
+    var belt = new T.Mesh(new T.BoxGeometry(24.5, L.BELT_Y, 3.8), new T.MeshBasicMaterial({ map: ln.beltTex })); belt.position.set(-11.2, L.BELT_Y / 2 + 0.1, 0); g.add(belt);
+    box(24.5, 0.75, 0.3, this.mat.hazard, -11.2, 0.47, 2.05, null, true); box(24.5, 0.75, 0.3, this.mat.hazard, -11.2, 0.47, -2.05, null, true);
+    box(0.3, 3.9, 4.4, '#22262e', -14.25, 2.3, 0);                                      //  the opening in the factory wall
+    //  cutter: a gantry with a saw blade
+    var cutter = new T.Group(); cutter.position.set(L.SLICER_X, 0, 0); g.add(cutter);
+    box(0.5, 5.6, 0.5, '#b5503c', 0, 2.8, 2.6, cutter, true); box(0.5, 5.6, 0.5, '#b5503c', 0, 2.8, -2.6, cutter, true); box(0.6, 0.5, 5.8, '#b5503c', 0, 5.6, 0, cutter, true);
+    box(1.2, 0.3, 1.2, '#333333', 0, 0.25, 2.6, cutter); box(1.2, 0.3, 1.2, '#333333', 0, 0.25, -2.6, cutter);
+    ln.blade = new T.Mesh(new T.CylinderGeometry(2.1, 2.1, 0.08, 28), this.tm('#e9eef2')); ln.blade.rotation.z = Math.PI / 2; ln.blade.position.y = 3.6; cutter.add(ln.blade);
+    for (i = 0; i < 14; i++) { var tt = box(0.09, 0.5, 0.35, '#cfd6db', 0, 0, 0, ln.blade), a = i / 14 * Math.PI * 2; tt.position.set(Math.cos(a) * 2.15, 0, Math.sin(a) * 2.15); tt.rotation.y = -a; }
+    //  fitter: a press that stamps each section into kits
+    var fitter = new T.Group(); fitter.position.set(L.DICER_X + 0.3, 0, 0); g.add(fitter);
+    box(2.6, 0.6, 5.2, '#1f3a6b', 0, 4.7, 0, fitter, true); box(2.6, 4.4, 0.5, '#1f3a6b', 0, 2.3, 2.5, fitter, true); box(2.6, 4.4, 0.5, '#1f3a6b', 0, 2.3, -2.5, fitter, true);
+    ln.press = box(2.2, 1.0, 4.4, '#dfe6ee', 0, 4.1, 0, fitter);
+    for (i = -2; i <= 2; i++) { box(0.06, 0.5, 4.4, '#9aa7b5', i * 0.45, -0.7, 0, ln.press); }
+    var chute = box(3.4, 0.2, 3.8, '#c8d0d6', 2.6, 1.0, 0); chute.rotation.z = -0.25;
+    box(9.6, 1.0, 0.3, this.mat.hazard, L.BAY_X0 + 4.5, 0.6, L.BAY_Z0 - 0.3, null, true); box(0.3, 1.0, 9.6, this.mat.hazard, L.BAY_X0 + 9.3, 0.6, 0, null, true);
+    //  assembly hall gate: kits go in here, drones come out into the yard behind it
+    var hall = new T.Group(); hall.position.set(L.MARKET_X + 3, 0, L.LANE_Z); g.add(hall);
+    box(5, 4.6, 0.6, '#f1ece0', 0, 2.3, 2.3, hall, true); box(5, 4.6, 0.6, '#f1ece0', 0, 2.3, -2.3, hall, true); box(5.4, 0.8, 5.6, '#1f3a6b', 0, 5.0, 0, hall, true);
+    ln.lamp = box(0.3, 1.4, 3.2, new T.MeshBasicMaterial({ color: 0x3cf28a }), -2.6, 5.9, 0, hall);
+    //  steel billets and the sections cut from them (instanced)
+    var cc = document.createElement('canvas'); cc.width = cc.height = 128; var cx = cc.getContext('2d');
+    cx.fillStyle = '#55606c'; cx.fillRect(0, 0, 128, 128);
+    cx.fillStyle = '#aeb8c2'; cx.beginPath(); cx.arc(64, 64, 56, 0, 7); cx.fill();
+    cx.fillStyle = '#ff8a1e'; cx.beginPath(); cx.arc(64, 64, 30, 0, 7); cx.fill();
+    cx.fillStyle = '#55606c'; cx.beginPath(); cx.arc(64, 64, 12, 0, 7); cx.fill();
+    var capMat = new T.MeshBasicMaterial({ map: new T.CanvasTexture(cc) });
+    var discGeo = new T.CylinderGeometry(L.ROLL_R, L.ROLL_R, 1, 28); discGeo.rotateZ(-Math.PI / 2);
+    ln.MAX_DISCS = 400; ln.discMesh = new T.InstancedMesh(discGeo, [this.tm('#6f7a86'), capMat, capMat], ln.MAX_DISCS); ln.discMesh.frustumCulled = false; ln.discMesh.count = 0; g.add(ln.discMesh);
+    //  drone kits: the pile in the dock and the ones in the air
+    ln.pieceMesh = new T.InstancedMesh(new T.BoxGeometry(0.52, 0.3, 0.52), new T.MeshLambertMaterial({ color: 0xffffff }), L.MAX_PIECES);
+    ln.pieceMesh.frustumCulled = false; ln.pieceMesh.setColorAt(0, new T.Color(0xffffff)); ln.pieceMesh.count = 0; g.add(ln.pieceMesh);
+    ln.palette = ['#ff8a1e', '#3aa0ff', '#ffd23a', '#dfe6ee', '#dfe6ee', '#8f95a1'].map(function(h) { return new T.Color(h); });
+    ln.dummy = new T.Object3D();
+    ln.wheelGeo = new T.CylinderGeometry(0.42, 0.42, 0.3, 12);
+    ln.box = box;
+};
+View3D.prototype.lineTruck = function(tr) {
+    var T = THREE, ln = this.ln, g = new T.Group(), box = ln.box, self = this;
+    box(1.3, 1.5, 1.9, '#ff8a1e', 1.75, 1.15, 0, g, true); box(0.1, 0.6, 1.5, '#9fd8ff', 2.42, 1.5, 0, g);
+    box(3.0, 0.3, 2.0, '#e8e8e8', -0.5, 0.65, 0, g, true); box(0.15, 1.0, 2.0, '#e8e8e8', 1.0, 1.3, 0, g);
+    var cargo = box(2.8, 1, 1.8, new T.MeshLambertMaterial({ color: 0xff8a1e }), -0.5, 0.8, 0, g); cargo.visible = false;
+    [[1.6, 1], [1.6, -1], [-1.3, 1], [-1.3, -1]].forEach(function(p) { var w = new T.Mesh(ln.wheelGeo, self.tm('#222222')); w.rotation.x = Math.PI / 2; w.position.set(p[0], 0.42, p[1] * 0.95); g.add(w); });
+    //  the driver: a dock bunny with its head out of the cab roof
+    var bn = this.bunny(tr.seed, 'dock'); bn.scale.multiplyScalar(0.17); bn.rotation.y = Math.PI / 2; bn.position.set(1.7, 0.75, 0); g.add(bn);
+    ln.g.add(g);
+    return { g: g, cargo: cargo };
+};
+View3D.prototype.syncLine = function(line, time) {
+    var ln = this.ln, L = LINE, d = ln.dummy, i, n, GN = L.GN, H = line.H;
+    ln.beltTex.offset.x = line.beltOff || 0;
+    if (!line.jam) { ln.blade.rotation.x = line.time * 9; }
+    ln.blade.position.y = 3.75 - line.bladeDrop * 0.35;
+    ln.press.position.y = 4.1 - Math.sin(line.pressT * Math.PI) * 1.4;
+    ln.lamp.material.color.setHex((line.hallT || 0) > 0 ? 0xffd23a : 0x3cf28a);
+    //  billets and sections
+    n = Math.min(line.discs.length, ln.MAX_DISCS);
+    for (i = 0; i < n; i++) { var c = line.discs[i]; d.position.set(c.x, L.BELT_Y + 0.1 + L.ROLL_R + Math.sin(c.hop * Math.PI) * 0.25, 0); d.rotation.set(c.cut ? c.x * 0.15 : 0, 0, 0); d.scale.set(c.cut ? c.th * 0.94 : c.th * 1.002, 1, 1); d.updateMatrix(); ln.discMesh.setMatrixAt(i, d.matrix); }
+    ln.discMesh.count = n; ln.discMesh.instanceMatrix.needsUpdate = true;
+    //  kits: pile, then the ones in flight
+    n = 0; var ix, iz, k, pm = ln.pieceMesh, pal = ln.palette;
+    for (iz = 0; iz < GN; iz++) { for (ix = 0; ix < GN; ix++) {
+        var h = H[ix + iz * GN];
+        for (k = 0; k < h && n < L.MAX_PIECES; k++) {
+            var r = lineHash(ix * 97 + k * 13, iz * 57 + k * 7), r2 = lineHash(k + ix, iz * 3 + 11);
+            d.position.set(L.BAY_X0 + (ix + 0.5) * L.CELL + (r - 0.5) * 0.16, 0.2 + (k + 0.5) * L.LAYER, L.BAY_Z0 + (iz + 0.5) * L.CELL + (r2 - 0.5) * 0.16);
+            d.rotation.set((r2 - 0.5) * 0.25, r * 6.28, (r - 0.5) * 0.25); d.scale.set(1, 1, 1); d.updateMatrix();
+            pm.setMatrixAt(n, d.matrix); pm.setColorAt(n, pal[(r * 977 | 0) % pal.length]); n++;
+        }
+    } }
+    for (i = 0; i < line.flights.length && n < L.MAX_PIECES; i++) {
+        var fl = line.flights[i]; if (fl.t < 0) { continue; } var s = fl.t / fl.T;
+        var ex = L.BAY_X0 + (fl.ix + 0.5) * L.CELL, ez = L.BAY_Z0 + (fl.iz + 0.5) * L.CELL, ey = 0.2 + (H[fl.ix + fl.iz * GN] + 0.5) * L.LAYER;
+        d.position.set(fl.x0 + (ex - fl.x0) * s, fl.y0 + (ey - fl.y0) * s + 3.2 * s * (1 - s) * 2, fl.z0 + (ez - fl.z0) * s);
+        d.rotation.set(fl.t * 9 + fl.id, fl.t * 7, fl.id); d.scale.set(1, 1, 1); d.updateMatrix();
+        pm.setMatrixAt(n, d.matrix); pm.setColorAt(n, pal[fl.id % pal.length]); n++;
+    }
+    pm.count = n; pm.instanceMatrix.needsUpdate = true; if (pm.instanceColor) { pm.instanceColor.needsUpdate = true; }
+    pm.material.color.setHex(line.jam && Math.sin(time * 10) > 0 ? 0xff9a9a : 0xffffff);
+    //  trucks
+    for (i = 0; i < line.trucks.length; i++) {
+        var tr = line.trucks[i], m = ln.trucks[i] || (ln.trucks[i] = this.lineTruck(tr));
+        m.g.visible = tr.state !== 'away'; m.g.position.set(tr.x, 0.16, tr.z); m.g.rotation.y = tr.rot;
+        var f = tr.load / line.truckCap(); m.cargo.visible = tr.load > 0; m.cargo.scale.y = 0.15 + 1.5 * f; m.cargo.position.y = 0.8 + (0.15 + 1.5 * f) / 2;
+    }
+    for (i = line.trucks.length; i < ln.trucks.length; i++) { ln.trucks[i].g.visible = false; }
+};
 View3D.prototype.syncBase = function(sim, t) {
     var key, i, b, used = {}, self = this;
     for (key in this.bld) {
@@ -1315,11 +1589,11 @@ View3D.prototype.syncBase = function(sim, t) {
         for (i = 0; i < 3; i++) { b.stars[i].visible = i < lv; b.stars[i].rotation.y = t * 1.5 + i; }
     }
     var Y = BUILDINGS.yard;
-    for (i = 0; i < 22; i++) {
+    for (i = 0; i < 40; i++) {
         var slot = this.yardSlots[i] || (this.yardSlots[i] = { g: null, key: '' }), it = sim.stock[i], k2 = it ? it.cls + it.tpl.role : '';
         if (slot.key !== k2) {
             if (slot.g) { this.scene.remove(slot.g); slot.g = null; }
-            if (it) { slot.g = KIT.build(it.cls, it.tpl.role); slot.g.scale.setScalar(it.cls === 'air' ? 0.5 : 0.62); slot.g.position.set(Y.x + 46 - (i % 6) * 18.4, it.cls === 'sub' ? 9.5 : 7.4, Y.z - 36 + Math.floor(i / 6) * 24); slot.g.rotation.y = Math.PI; this.scene.add(slot.g); }
+            if (it) { slot.g = KIT.build(it.cls, it.tpl.role); slot.g.scale.setScalar(it.cls === 'air' ? 0.42 : 0.5); slot.g.position.set(Y.x + 49 - (i % 8) * 14, it.cls === 'sub' ? 9 : 7.4, Y.z - 40 + Math.floor(i / 8) * 20); slot.g.rotation.y = Math.PI; this.scene.add(slot.g); }
             slot.key = k2;
         }
     }
@@ -1330,6 +1604,7 @@ View3D.prototype.syncBase = function(sim, t) {
         self.walk(m, x, z, h, t + bn.seed, moving, false);
         if (hop) { m.position.y += Math.abs(Math.sin(t * 3 + bn.seed)) * 1.6; }
     }
+    this.syncLine(sim.line, t);
     var kinds = ['camp', 'academy'], n;
     for (n = 0; n < 2; n++) {
         var B = BUILDINGS[kinds[n]], st = sim.base[kinds[n]];
@@ -1686,8 +1961,10 @@ View3D.prototype.setDay = function(f) { this.day = clamp(f, 0, 1); };
 
 View3D.prototype.placeCam = function() {
     var z = this.zoom, d = 150 * Math.pow(5600 / 150, z), pitch = (9 + 46 * Math.pow(z, 0.8)) * Math.PI / 180;
-    this.target.x = clamp(this.target.x, WORLD.x0, WORLD.x1); this.target.z = clamp(this.target.z, -150, WORLD.far - 400);
-    this.cam.position.set(this.target.x, Math.sin(pitch) * d + 6, this.target.z - Math.cos(pitch) * d);
+    var k = clamp((z - 0.3) / 0.2, 0, 1); k = 1 - k * k * (3 - 2 * k);          //  1 = yard view, 0 = strait view
+    var dx = -0.34 * k, dy = 0.74 * k + Math.sin(pitch) * (1 - k), dz = -0.6 * k - Math.cos(pitch) * (1 - k), dl = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    this.target.x = clamp(this.target.x, WORLD.x0, WORLD.x1); this.target.z = clamp(this.target.z, -300, WORLD.far - 400);
+    this.cam.position.set(this.target.x + dx / dl * d, dy / dl * d + 6, this.target.z + dz / dl * d);
     this.cam.lookAt(this.target.x, 0, this.target.z);
     this.cam.updateMatrixWorld();
 };
@@ -1717,7 +1994,9 @@ View3D.prototype.zoomBy = function(delta, px, py) {
 };
 View3D.prototype.panBy = function(dx, dy) {
     var k = this.cam.position.distanceTo(this.target) * 2 * Math.tan(this.cam.fov * Math.PI / 360) / this.h;
-    this.target.x += dx * k; this.target.z += dy * k * 1.5;
+    //  Along the screen's own right and forward directions, so it works at any camera angle (from the mill).
+    var rx = new THREE.Vector3().setFromMatrixColumn(this.cam.matrixWorld, 0); rx.y = 0; rx.normalize();
+    this.target.x += -rx.x * dx * k + rx.z * dy * k * 1.5; this.target.z += -rx.z * dx * k - rx.x * dy * k * 1.5;
     this.placeCam();
 };
 View3D.prototype.goTo = function(zoom, x, z) { this.zoom = zoom; this.target.set(x, 0, z); this.placeCam(); };
@@ -2224,7 +2503,7 @@ var UI_IC = {
     home: '<path d="M3 11l9-8 9 8M6 10v10h12V10"/>', sea: '<path d="M2 9c3-3 5 3 8 0s5 3 8 0 3 1 4 0M2 16c3-3 5 3 8 0s5 3 8 0 3 1 4 0"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
     factory: '<path d="M3 21V10l6 4v-4l6 4V5h4v16z"/><path d="M7 17h2M12 17h2"/>', camp: '<path d="M3 20L12 5l9 15z"/><path d="M12 5V2l4 1.5-4 1.5M10 20l2-4 2 4"/>',
     academy: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c2 2 10 2 12 0v-5M22 9v6"/>', lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
-    up: '<path d="M12 19V6M6 12l6-6 6 6"/>'
+    up: '<path d="M12 19V6M6 12l6-6 6 6"/>', snd: '<path d="M4 9v6h4l5 4V5L8 9zM16 9a4 4 0 010 6M18.5 6.5a8 8 0 010 11"/>'
 };
 //  A bunny's face for the panels, drawn from the same numbers as its 3D model.
 function face(b) {
@@ -2241,17 +2520,17 @@ function who(b) { return (b.rank === 'officer' ? 'Officer ' : 'Operator ') + b.n
 /* ------------------------------------------------------------------
     Welcome
    ------------------------------------------------------------------ */
-var BASE_VIEW = [0.4, BASE.x + 45, -120];
+var BASE_VIEW = [0.2, BASE.x - 150, BASE.z - 45];
 function WelcomeState() {}
 WelcomeState.prototype.enter = function(game) {
     $('hud').classList.add('hidden'); $('replaybar').classList.add('hidden');
     var h = '<h1>Strait Crossing</h1><div class="tag">FUTURE OF WARFARE &middot; SYSTEM OF AUTONOMOUS SYSTEMS</div>';
     h += '<p>An invasion fleet is crossing the strait in five waves. You run the bunny navy&rsquo;s drone base. <b style="color:#fff">Keep fewer than ' + LAND_LIMIT + ' landing ships off the beach.</b></p>';
     h += '<div class="cols">';
-    h += '<div class="box"><h2>1 &middot; BUILD</h2><div class="txt">The <b>Factory</b> builds any drone you queue. It costs money and takes time. Finished drones wait in the yard.</div></div>';
-    h += '<div class="box"><h2>2 &middot; TRAIN</h2><div class="txt">The <b>Boot Camp</b> trains operators. Each drives a boat, sub, plane or truck with loyal wingman drones.</div></div>';
-    h += '<div class="box"><h2>3 &middot; COMMAND</h2><div class="txt">The <b>Academy</b> trains officers. An officer&rsquo;s mothership carries operators beyond your link and runs them on <b style="color:#3aa0ff">DEFEND</b>, <b style="color:#ffd23a">SCREEN</b> or <b style="color:#ff8a1e">ATTACK</b>.</div></div>';
-    h += '<div class="box"><h2>4 &middot; GROW</h2><div class="txt">Money comes in all the time. Unlock and upgrade buildings to build faster, hold more and fly bigger flights.</div></div>';
+    h += '<div class="box"><h2>1 &middot; THE LINE</h2><div class="txt">Steel rolls out of the factory, gets cut and fitted into drone kits, and bunny trucks haul the kits to the assembly hall. Every kit pays, and every dozen becomes a drone.</div></div>';
+    h += '<div class="box"><h2>2 &middot; GREEN TAGS</h2><div class="txt">Tags float over the base. A green one is something you can afford: a faster belt, more trucks, a bigger yard, a new building.</div></div>';
+    h += '<div class="box"><h2>3 &middot; CREWS</h2><div class="txt">The <b>Boot Camp</b> trains operators who lead drones as wingmen. The <b>Academy</b> trains officers whose motherships carry them across the strait.</div></div>';
+    h += '<div class="box"><h2>4 &middot; ORDERS</h2><div class="txt">Tap a crewed unit, pick <b style="color:#3aa0ff">DEFEND</b>, <b style="color:#ffd23a">SCREEN</b> or <b style="color:#ff8a1e">ATTACK</b>, then tap the sea.</div></div>';
     h += '</div>';
     h += '<button class="btn go xl" id="startBtn">TAKE COMMAND</button><div class="tiny">Pinch to zoom &middot; drag to look around &middot; tap a building or a ship</div>';
     showOverlay(h);
@@ -2283,10 +2562,11 @@ PlayState.prototype.enter = function(game) {
         while (el && el !== this && !(el.getAttribute && el.getAttribute('data-act'))) { el = el.parentNode; }
         if (el && el !== this) { self.act(game, el.getAttribute('data-act'), el.getAttribute('data-a'), el.getAttribute('data-b')); e.stopPropagation(); }
     };
-    this.banner('DAY 1', 'First wave in ' + mmss(PHASES[0].prep) + '. Get the base running.');
+    $('tags').innerHTML = ''; this.tags = {}; this.pops = [];
+    this.banner('DAY 1', 'First wave in ' + mmss(PHASES[0].prep) + '. The line is running: put crews on those drones.');
     this.renderAll(game);
 };
-PlayState.prototype.leave = function() { $('hud').classList.add('hidden'); $('hud').onclick = null; };
+PlayState.prototype.leave = function() { $('hud').classList.add('hidden'); $('hud').onclick = null; $('tags').innerHTML = ''; this.tags = {}; this.pops = []; $('warn').style.display = 'none'; };
 
 PlayState.prototype.say = function(text, cls) {
     this.logLines.push({ text: text, cls: cls || '', t: 6 });
@@ -2298,20 +2578,8 @@ PlayState.prototype.banner = function(title, text) {
 };
 
 PlayState.prototype.act = function(game, act, a, b) {
-    var sim = game.sim, o = this.sel, v = game.view, u;
-    if (act === 'panel') {
-        this.panel = this.panel === a ? null : a; this.sel = null;
-        //  Frame the building in the part of the screen the panel leaves free.
-        if (v && this.panel) { v.goTo(0.3, (a === 'factory' ? -120 : BUILDINGS[a].x) - 105, BUILDINGS[a].z + 70); }
-    }
-    else if (act === 'closep') { this.panel = null; }
-    else if (act === 'up') { sim.upgrade(a); }
-    else if (act === 'q') { sim.queueDrone(a); }
-    else if (act === 'cyc') { var t = sim.templates[a]; sim.templates[a] = makeTpl(a, ROLE_ORDER[(ROLE_ORDER.indexOf(t.role) + 1) % ROLE_ORDER.length]); }
-    else if (act === 'train') { sim.train(a); }
-    else if (act === 'board') { this.board = !this.board; }
-    else if (act === 'launch') { u = sim.launchFlight(a, this.board); if (u && u.cls !== 'mother') { this.sel = u; this.panel = null; this.say(who(u.crew) + ' is ready. Tap the sea to send the flight.', 'ok'); } }
-    else if (act === 'commission') { u = sim.commission(); if (u) { this.say('Now open the Boot Camp and send flights aboard.', 'ok'); } }
+    var sim = game.sim, o = this.sel, v = game.view;
+    if (act === 'mute') { audioInit(); muted = !muted; }
     else if (act === 'strat') { if (o && !o.side) { if (!sim.setStrategy(o, a)) { this.say('No orders possible: ' + o.why + '.', 'bad'); } } }
     else if (act === 'home') { if (o && !sim.order(o, BERTH.x, BERTH.z)) { this.say('Cannot call it home: ' + o.why + '.', 'bad'); } }
     else if (act === 'recall') { if (o && !o.side && !sim.recall(o)) { this.say('Cannot recall: ' + o.why + '.', 'bad'); } }
@@ -2324,70 +2592,104 @@ PlayState.prototype.act = function(game, act, a, b) {
     this.renderAll(game);
 };
 
-/* ---- The dock: one big button per building. ---- */
+/* ---- The works chip: what the line is doing, at a glance. ---- */
 PlayState.prototype.renderDock = function(game) {
-    var sim = game.sim, h = '', i;
-    for (i = 0; i < BUILDING_ORDER.length; i++) {
-        var key = BUILDING_ORDER[i], b = sim.base[key], B = BUILDINGS[key], n = key === 'factory' ? b.queue.length : b.ready.length, busy = b.queue && b.queue.length;
-        h += '<div class="dk' + (this.panel === key ? ' on' : '') + (b.lv ? '' : ' locked') + '" data-act="panel" data-a="' + key + '" style="--c:' + (key === 'factory' ? '#ff8a1e' : key === 'camp' ? '#58d68d' : '#6aa8ff') + '">' +
-            '<div class="sil">' + svg(UI_IC[key]) + '</div><div class="nm">' + B.name.replace('Drone ', '') + '</div>' +
-            '<div class="cost">' + (b.lv ? 'LV ' + b.lv : svg(UI_IC.lock) + '$' + B.unlock) + '</div>' +
-            (n ? '<div class="tag">' + n + (key === 'factory' ? ' building' : ' ready') + '</div>' : busy ? '<div class="tag dimtag">training</div>' : '') + '</div>';
-    }
-    h += '<div class="yardchip"><div class="cap">YARD</div><b>' + sim.stock.length + '</b>/' + yardCap(sim.base.yard.lv) + '</div>';
+    var sim = game.sim, L = sim.line, cap = L.bayCap(), fr = Math.min(1, L.pile / cap), b = sim.base;
+    var h = '<div class="wk"><div class="cap">DRONE WORKS</div><div class="wl">Income <b class="ok">$' + fmt(L.rate) + '</b>/s</div>' +
+        '<div class="wl">Parts dock <b>' + L.pile + '</b>/' + cap + '</div><div class="pgw"><i class="pg" style="width:' + Math.round(fr * 100) + '%;background:' + (fr > 0.85 ? 'var(--red)' : fr > 0.6 ? 'var(--amber)' : 'var(--acc)') + '"></i></div></div>' +
+        '<div class="wk"><div class="cap">DRONE YARD</div><div class="wl"><b>' + sim.stock.length + '</b>/' + yardCap(b.yard.lv) + ' drones</div><div class="wl">';
+    for (var i = 0; i < DRONE_ORDER.length; i++) { h += '<span class="cnt">' + svg(SIL[DRONE_ORDER[i]], 1) + sim.stockOf(DRONE_ORDER[i]) + '</span>'; }
+    h += '</div><div class="pgw"><i class="pg" style="width:' + Math.round(100 * Math.min(1, L.kits / KITS_PER_DRONE)) + '%"></i></div></div>' +
+        '<div class="wk"><div class="cap">CREW READY</div><div class="wl">';
+    for (i = 0; i < b.camp.ready.length && i < 4; i++) { h += face(b.camp.ready[i]); }
+    for (i = 0; i < b.academy.ready.length && i < 2; i++) { h += face(b.academy.ready[i]); }
+    h += (b.camp.ready.length + b.academy.ready.length ? '' : '<span class="dim">nobody yet</span>') + '</div></div>';
     setHtml('dock', h);
 };
-function upBtn(sim, key) {
-    var b = sim.base[key], c = sim.upgradeCost(key);
-    if (b.lv >= MAX_LV) { return '<span class="chip">MAX</span>'; }
-    return '<span class="btn up' + (c > sim.credits ? ' poor' : '') + '" data-act="up" data-a="' + key + '">' + svg(UI_IC.up) + (b.lv ? 'LV ' + (b.lv + 1) : 'OPEN') + ' $' + c + '</span>';
-}
-function progBar(id) { return '<span class="pgw"><i class="pg" data-pg="' + id + '"></i></span>'; }
-PlayState.prototype.panelHtml = function(game) {
-    var sim = game.sim, key = this.panel, b = sim.base[key], B = BUILDINGS[key], i, h, x = '<span class="x" data-act="closep">' + svg(UI_IC.x) + '</span>';
-    h = '<div class="hd"><b>' + B.name.toUpperCase() + '</b>' + (b.lv ? '<span class="chip">LV ' + b.lv + '</span>' : '') + upBtn(sim, key) + x + '</div>';
-    if (!b.lv) { return h + '<div class="says">' + B.does + '</div><div class="says warn">Locked. Open it for $' + B.unlock + '.</div>'; }
-    if (key === 'factory') {
-        h += '<div class="tiles">';
-        for (i = 0; i < DRONE_ORDER.length; i++) {
-            var cls = DRONE_ORDER[i], t = sim.templates[cls], cost = smallCost(cls, t), col = ROLES[t.role].color;
-            h += '<div class="tl" style="--c:' + col + '"><div class="mk' + (cost > sim.credits ? ' poor' : '') + '" data-act="q" data-a="' + cls + '">' + svg(SIL[cls], 1) + '<b>' + SHORT[cls] + '</b><span class="cost">$' + cost + '</span></div>' +
-                '<div class="rc" data-act="cyc" data-a="' + cls + '">' + svg(IC[t.role]) + ROLES[t.role].name + '</div></div>';
-        }
-        h += '</div><div class="says">Tap a drone to build it. Tap the coloured strip under it to change what it is for.</div>';
-        h += '<div class="rowl"><span class="cap">BUILDING</span>';
-        for (i = 0; i < b.queue.length; i++) { h += '<span class="slot sm" style="--c:' + ROLES[b.queue[i].tpl.role].color + '">' + svg(SIL[b.queue[i].cls], 1) + '</span>'; }
-        h += (b.queue.length ? progBar('factory') : '<span class="dim">nothing queued</span>') + '</div>';
-        h += '<div class="rowl"><span class="cap">YARD ' + sim.stock.length + '/' + yardCap(sim.base.yard.lv) + '</span>';
-        for (i = 0; i < DRONE_ORDER.length; i++) { var n = sim.stockOf(DRONE_ORDER[i]); if (n) { h += '<span class="cnt">' + svg(SIL[DRONE_ORDER[i]], 1) + n + '</span>'; } }
-        h += '<span style="margin-left:auto">' + upBtn(sim, 'yard').replace('LV', 'YARD LV') + '</span></div>';
-        if (sim.stock.length >= yardCap(sim.base.yard.lv)) { h += '<div class="says warn">The yard is full. Launch a flight or upgrade the yard.</div>'; }
-        return h;
+
+/* ---- Upgrade tags floating over the base (from the mill): tap one to buy it. ---- */
+PlayState.prototype.tagList = function(game) {
+    var sim = game.sim, L = sim.line, b = sim.base, out = [], i, self = this, C = BUILDINGS.camp, A = BUILDINGS.academy, Y = BUILDINGS.yard, cr = sim.credits;
+    function tag(key, x, z, name, sub, price, state, act) { out.push({ key: key, x: x, z: z, name: name, sub: sub, price: price, state: state, act: act }); }
+    function st(costV, okToo) { return (cr >= costV && okToo !== false) ? 'ok' : ''; }
+    UP_ORDER.forEach(function(k) {
+        var u = UP[k], maxed = L.lv[k] >= u.max, c = L.cost(k);
+        tag(k, lineX(u.at[0]), lineZ(u.at[2]), u.name, u.fx(L.lv[k]) + (maxed ? '' : ' → ' + u.fx(L.lv[k] + 1)), maxed ? 'MAX' : '$' + fmt(c), maxed ? 'max' : st(c), function() { L.buy(k); });
+    });
+    tag('mix', lineX(29.5), lineZ(14), 'Drone mix', MIXES[L.mix].name, 'CHANGE', 'ok', function() { L.mix = (L.mix + 1) % MIXES.length; L.seqI = 0; self.say('The hall now builds: ' + MIXES[L.mix].seq.map(function(c) { return SHORT[c]; }).join(', ') + '.', 'ok'); });
+    var yc = sim.upgradeCost('yard'), ym = b.yard.lv >= BUILDINGS.yard.max;
+    tag('yard', Y.x, Y.z - 68, 'Drone yard', 'holds ' + yardCap(b.yard.lv) + (ym ? '' : ' → ' + yardCap(b.yard.lv + 1)), ym ? 'MAX' : '$' + yc, ym ? 'max' : st(yc), function() { sim.upgrade('yard'); });
+    function bld(key, B, what, nextTxt) {
+        var s = b[key], c = sim.upgradeCost(key), mx = s.lv >= MAX_LV;
+        tag(key, B.x + (s.lv ? 38 : 0), B.z - 48, B.name, s.lv ? nextTxt : what, mx ? 'MAX' : (s.lv ? '$' : 'OPEN $') + c, mx ? 'max' : st(c), function() { sim.upgrade(key); });
     }
-    var kind = key === 'camp' ? 'operator' : 'officer', T = TRAIN[kind];
-    h += '<div class="rowl"><span class="btn go' + (T.cost > sim.credits ? ' poor' : '') + '" data-act="train" data-a="' + kind + '">TRAIN ' + kind.toUpperCase() + ' $' + T.cost + '</span>';
-    for (i = 0; i < b.queue.length; i++) { h += '<span class="fc ld">' + face(b.queue[i].bunny) + '</span>'; }
-    h += (b.queue.length ? progBar(key) : '') + '</div>';
-    h += '<div class="rowl"><span class="cap">READY</span>';
-    for (i = 0; i < b.ready.length; i++) { h += '<span class="fc">' + face(b.ready[i]) + '<em>' + b.ready[i].name + '</em></span>'; }
-    h += (b.ready.length ? '' : '<span class="dim">nobody yet</span>') + '</div>';
-    if (key === 'camp') {
-        var dm = sim.dockedMother(), size = wingSize(b.lv);
-        h += '<div class="cap" style="margin-top:6px">LAUNCH A FLIGHT &mdash; operator + up to ' + size + ' wingmen</div><div class="tiles">';
-        for (i = 0; i < CRAFT_ORDER.length; i++) {
-            var cr = CRAFT_ORDER[i], have = sim.stockOf(CLASSES[cr].wing), ok = b.ready.length && have;
-            h += '<div class="tl" style="--c:#f4f1e6"><div class="mk' + (ok ? '' : ' poor') + '" data-act="launch" data-a="' + cr + '">' + svg(SIL[cr], 1) + '<b>' + SHORT[cr] + '</b><span class="cost">' + Math.min(have, size) + '/' + size + ' ' + svg(SIL[CLASSES[cr].wing], 1) + '</span></div></div>';
-        }
-        h += '</div>';
-        if (sim.freeBay(dm)) { h += '<div class="rowl"><span class="btn' + (this.board ? ' go' : '') + '" data-act="board">' + (this.board ? 'BOARDING THE MOTHERSHIP' : 'GOING OUT ALONE') + '</span><span class="dim">tap to switch</span></div>'; }
-        else { h += '<div class="says">Flights go out alone and need your home link. An officer&rsquo;s mothership at the pier can carry them further.</div>'; }
-    } else {
-        var can = b.ready.length && !sim.dockedMother();
-        h += '<div class="rowl"><span class="btn' + (can ? ' go' : ' poor') + '" data-act="commission">COMMISSION MOTHERSHIP $' + MOTHER_COST + '</span><span class="dim">' + motherBays(b.lv) + ' flights each</span></div>';
-        h += '<div class="says">' + (sim.dockedMother() ? 'A mothership is at the pier. Send it out to free the berth.' : B.does) + '</div>';
+    bld('camp', C, 'trains operators', 'wingmen ' + wingSize(b.camp.lv) + (b.camp.lv < MAX_LV ? ' → ' + wingSize(b.camp.lv + 1) : ''));
+    bld('academy', A, 'trains officers', b.academy.lv < 2 ? 'faster training' : 'ships carry 2 → 3 flights');
+    if (b.camp.lv) {
+        tag('trainOp', C.x - 40, C.z - 48, 'Train operator', b.camp.ready.length + ' ready' + (b.camp.queue.length ? ' · ' + b.camp.queue.length + ' training' : ''), '$' + TRAIN.operator.cost, st(TRAIN.operator.cost, b.camp.queue.length < 3), function() { sim.train('operator'); });
+        var size = wingSize(b.camp.lv);
+        CRAFT_ORDER.forEach(function(craft, n) {
+            var have = sim.stockOf(CLASSES[craft].wing);
+            tag(craft, C.x + 66 - n * 44, C.z + 128, SHORT[craft] + ' flight', Math.min(have, size) + '/' + size + ' ' + SHORT[CLASSES[craft].wing].toLowerCase() + ' drones', '$' + CRAFT_COST, st(CRAFT_COST, b.camp.ready.length > 0 && have > 0),
+                function() { var u = sim.launchFlight(craft, self.board); if (u && u.cls !== 'mother') { self.sel = u; self.say(who(u.crew) + ' is ready. Tap the sea to send the flight.', 'ok'); } });
+        });
     }
-    return h;
+    if (b.academy.lv) {
+        tag('trainOff', A.x - 40, A.z - 48, 'Train officer', b.academy.ready.length + ' ready' + (b.academy.queue.length ? ' · ' + b.academy.queue.length + ' training' : ''), '$' + TRAIN.officer.cost, st(TRAIN.officer.cost, b.academy.queue.length < 3), function() { sim.train('officer'); });
+        var dm = sim.dockedMother();
+        tag('commission', BERTH.x + 20, -52, 'Commission mothership', dm ? 'the pier is occupied' : b.academy.ready.length ? 'an officer is ready' : 'needs an officer', '$' + MOTHER_COST, st(MOTHER_COST, !dm && b.academy.ready.length > 0), function() { var u = sim.commission(); if (u) { self.sel = u; } });
+        if (sim.freeBay(dm)) { tag('board', BERTH.x - 70, -52, 'New flights', self.board ? 'board the mothership' : 'go out alone', 'SWITCH', 'ok', function() { self.board = !self.board; }); }
+    }
+    return out;
 };
+PlayState.prototype.refreshTags = function(game) {
+    var list = this.tagList(game), layer = $('tags'), self = this, seen = {}, i;
+    this.tags = this.tags || {};
+    for (i = 0; i < list.length; i++) {
+        var t = list[i], el = this.tags[t.key];
+        if (!el) {
+            el = document.createElement('button'); el.className = 'tag'; layer.appendChild(el); this.tags[t.key] = el;
+            (function(key) {
+                el.addEventListener('click', function(e) { e.stopPropagation(); audioInit(); var d = self.tagData[key]; if (d) { d.act(); self.renderAll(game); } });
+                el.addEventListener('pointerdown', function(e) { e.stopPropagation(); });
+            })(t.key);
+        }
+        seen[t.key] = 1;
+        var h = '<b>' + t.name + '</b><span>' + t.sub + '</span><i>' + t.price + '</i>', cl = 'tag' + (t.state ? ' ' + t.state : '');
+        if (el._h !== h) { el._h = h; el.innerHTML = h; }
+        if (el._c !== cl) { el._c = cl; el.className = cl; }
+    }
+    this.tagData = {};
+    for (i = 0; i < list.length; i++) { this.tagData[list[i].key] = list[i]; }
+    for (var k in this.tags) { if (!seen[k]) { this.tags[k].style.display = 'none'; this.tags[k]._gone = true; } else if (this.tags[k]._gone) { this.tags[k]._gone = false; } }
+};
+//  Every frame: pin each tag, pop-up and the jam warning to its spot in the world. Tags only show while you look at the base.
+PlayState.prototype.placeTags = function(game, dt) {
+    var v = game.view, ui = game.hudScale || 1, k, L = game.sim.line, show = v.zoom < 0.4, i;
+    for (k in this.tags) {
+        var el = this.tags[k], d = this.tagData && this.tagData[k];
+        if (!d || !show) { el.style.display = 'none'; continue; }
+        var s = v.toScreen({ x: d.x, z: d.z, dom: 'land' });
+        if (s.behind || s.x < -60 || s.x > v.w + 60 || s.y < 40 || s.y > v.h + 30) { el.style.display = 'none'; continue; }
+        el.style.display = 'block';
+        el.style.transform = 'translate(' + (s.x / ui - (el.offsetWidth || 90) / 2) + 'px,' + (s.y / ui - (el.offsetHeight || 40) / 2) + 'px)';
+    }
+    var w = $('warn'); w.style.display = (L.jam && show) ? 'block' : 'none';
+    if (L.jam && show) { var p = v.toScreen({ x: lineX(LINE.BAY_X0 + 4.5), z: lineZ(0), dom: 'land' }); w.style.transform = 'translate(' + p.x / ui + 'px,' + (p.y / ui - 40) + 'px)'; }
+    this.pops = this.pops || [];
+    while (L.pops.length) { var np = L.pops.shift(), pe = document.createElement('div'); pe.className = 'pop'; pe.textContent = np.text; $('tags').appendChild(pe); this.pops.push({ d: pe, x: lineX(np.x), z: lineZ(np.z), t: 0 }); }
+    for (i = this.pops.length - 1; i >= 0; i--) {
+        var pp = this.pops[i]; pp.t += dt; var ps = v.toScreen({ x: pp.x, z: pp.z, dom: 'land' });
+        pp.d.style.transform = 'translate(' + (ps.x / ui - 30) + 'px,' + (ps.y / ui - 50 - pp.t * 40) + 'px)'; pp.d.style.opacity = String(show ? 1 - pp.t / 1.2 : 0);
+        if (pp.t > 1.2) { if (pp.d.parentNode) { pp.d.parentNode.removeChild(pp.d); } this.pops.splice(i, 1); }
+    }
+    while (L.sfx.length) { var sf = L.sfx.shift(); if (show) { beep(sf[0], sf[1], sf[2]); } }
+};
+/* ---- Sound (from the mill): tiny beeps for the cutter, the fitter and every sale. ---- */
+var actx = null, muted = false;
+function audioInit() { if (actx) { return; } try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+function beep(f, dur, delay) { if (!actx || muted) { return; } try { var o = actx.createOscillator(), g = actx.createGain(), t0 = actx.currentTime + (delay || 0); o.type = 'triangle'; o.frequency.value = f; g.gain.setValueAtTime(0.05, t0); g.gain.exponentialRampToValueAtTime(0.001, t0 + dur); o.connect(g); g.connect(actx.destination); o.start(t0); o.stop(t0 + dur); } catch (e) {} }
+
 function flightChip(f, wingsN, col) {
     return '<span class="fl">' + face(f.bunny) + '<span class="flb"><em>' + f.bunny.name + '</em><span>' + svg(SIL[f.craft], 1) + wingsN + '/' + f.size + '</span></span></span>';
 }
@@ -2430,14 +2732,11 @@ PlayState.prototype.selHtml = function(game) {
     return '<div class="hd"><b>' + CLASSES[o.cls].name.toUpperCase() + '</b><span class="chip" style="border-color:' + col + ';color:' + col + '">' + ROLES[o.role].name + '</span>' + hull + close + '</div><div class="says">' + o.doing + '</div><div class="row"><span class="bad">' + o.why + '</span></div>';
 };
 PlayState.prototype.renderPanel = function(game) {
-    var el = $('selp'), sim = game.sim, i;
+    var el = $('selp');
     if (this.sel && this.sel.dead) { this.sel = null; }
-    if (!this.panel && !this.sel) { el.classList.add('hidden'); return; }
+    if (!this.sel) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
-    setHtml('selp', this.panel ? this.panelHtml(game) : this.selHtml(game));
-    //  Progress bars are moved without redrawing the panel.
-    var bars = el.querySelectorAll('[data-pg]');
-    for (i = 0; i < bars.length; i++) { var q = sim.base[bars[i].getAttribute('data-pg')].queue[0]; bars[i].style.width = (q ? Math.round(100 * (1 - q.t / q.t0)) : 0) + '%'; }
+    setHtml('selp', this.selHtml(game));
 };
 PlayState.prototype.renderTop = function(game) {
     var sim = game.sim, p = sim.phase, next = p + 1, W = WEATHER[sim.weather], hr = 5.5 + sim.dayFrac() * 13.5, h;
@@ -2445,12 +2744,13 @@ PlayState.prototype.renderTop = function(game) {
     if (next < PHASES.length) { h += '<div class="ln">Wave ' + (next + 1) + ' of ' + PHASES.length + ' in <b class="warn">' + mmss(sim.nextWave - sim.time) + '</b></div><div class="sub">' + PHASES[next].name + '</div>'; }
     else { h += '<div class="ln">LAST WAVE</div><div class="sub">' + sim.enemies.length + ' contacts left</div>'; }
     setHtml('clock', h);
-    setHtml('money', '$' + sim.credits + '<small>+' + incomeRate(sim.base).toFixed(1) + '/s</small>');
+    setHtml('money', '$' + fmt(sim.credits) + '<small>+' + fmt(sim.line.rate) + '/s</small>');
     h = '<div class="ib" data-act="pause">' + svg(this.paused ? UI_IC.play : UI_IC.pause) + '</div>' +
         '<div class="ib" data-act="speed"><b>' + this.speed + 'x</b></div>' +
         (next < PHASES.length ? '<div class="ib" data-act="send" title="Send the next wave now">' + svg(UI_IC.next) + '</div>' : '') +
         '<div class="ib" data-act="view" data-a="base">' + svg(UI_IC.home) + '</div>' +
-        '<div class="ib" data-act="view" data-a="strait">' + svg(UI_IC.sea) + '</div>';
+        '<div class="ib" data-act="view" data-a="strait">' + svg(UI_IC.sea) + '</div>' +
+        '<div class="ib' + (muted ? ' off' : '') + '" data-act="mute">' + svg(UI_IC.snd) + '</div>';
     setHtml('ctrlb', h);
 };
 //  One line of coaching until the base is running.
@@ -2458,16 +2758,15 @@ PlayState.prototype.renderHint = function(game) {
     var sim = game.sim, b = sim.base, dm = sim.dockedMother(), h = '', crews = 0, i;
     for (i = 0; i < sim.units.length; i++) { if (sim.units[i].crew) { crews++; } }
     if (sim.phase < 1) {
-        if (!sim.stock.length && !b.factory.queue.length && !crews) { h = 'Tap <b>FACTORY</b> and build a few drones'; }
-        else if (!b.camp.lv) { h = 'Open the <b>BOOT CAMP</b>: drones need an operator to lead them'; }
-        else if (!b.camp.ready.length && !b.camp.queue.length && !crews) { h = '<b>BOOT CAMP</b>: train an operator'; }
-        else if (b.camp.ready.length && sim.stock.length && !crews) { h = '<b>BOOT CAMP</b>: launch a flight, then tap the sea'; }
-        else if (crews && !b.academy.lv) { h = 'Open the <b>ACADEMY</b>: an officer&rsquo;s mothership takes flights beyond your link'; }
-        else if (b.academy.lv && b.academy.ready.length && !dm && sim.stats.mother.built === 0) { h = '<b>ACADEMY</b>: commission a mothership'; }
-        else if (dm && dm.cargoList.length + dm.loading.length === 0) { h = '<b>BOOT CAMP</b>: launch flights to board the mothership'; }
+        if (!b.camp.lv) { h = 'The line builds drones by itself. Tap <b>BOOT CAMP</b> to open it: drones need an operator'; }
+        else if (!b.camp.ready.length && !b.camp.queue.length && !crews) { h = 'Tap <b>TRAIN OPERATOR</b>'; }
+        else if (b.camp.ready.length && sim.stock.length && !crews) { h = 'Tap a <b>FLIGHT</b> tag by the parade ground, then tap the sea'; }
+        else if (crews && !b.academy.lv) { h = 'Spend on the green tags to speed the line. Open the <b>ACADEMY</b> for motherships'; }
+        else if (b.academy.lv && b.academy.ready.length && !dm && sim.stats.mother.built === 0) { h = 'Tap <b>COMMISSION MOTHERSHIP</b> by the pier'; }
+        else if (dm && dm.cargoList.length + dm.loading.length === 0) { h = 'Flight tags now send operators aboard the mothership'; }
         else if (dm && dm.cargoList.length) { h = 'Tap the mothership, pick a strategy, then <b>tap the sea</b>'; }
     }
-    if (this.paused) { h = 'PAUSED &mdash; you can still build, train and give orders'; }
+    if (this.paused) { h = 'PAUSED &mdash; you can still buy, train and give orders'; }
     $('hint').classList.toggle('hidden', !h);
     setHtml('hint', h);
     var l = '';
@@ -2475,7 +2774,7 @@ PlayState.prototype.renderHint = function(game) {
     setHtml('log', l);
 };
 PlayState.prototype.renderAll = function(game) {
-    this.renderDock(game); this.renderTop(game); this.renderPanel(game); this.renderHint(game);
+    this.renderDock(game); this.renderTop(game); this.renderPanel(game); this.renderHint(game); this.refreshTags(game);
     drawGoal(game.sim.landed);
 };
 
@@ -2507,6 +2806,7 @@ PlayState.prototype.update = function(game, dt) {
     }
     this.hudT -= dt;
     if (this.hudT <= 0) { this.hudT = 0.2; this.renderAll(game); }
+    if (v) { this.placeTags(game, dt); }
     if (sim.over) { game.moveToState(new ReportState(sim)); }
 };
 
@@ -2524,13 +2824,10 @@ PlayState.prototype.unitAt = function(game, px, py, list, r) {
 };
 //  A tap: open a building, select a piece, or send the selected piece there.
 PlayState.prototype.click = function(game, px, py) {
-    var sim = game.sim, v = game.view, R = 34 * (game.hudScale || 1), g = v.pick(px, py), u, key;
+    var sim = game.sim, v = game.view, R = 34 * (game.hudScale || 1), g = v.pick(px, py), u;
     u = this.unitAt(game, px, py, sim.units, R);
-    if (u) { this.sel = u.leader || u; this.panel = null; this.renderAll(game); return; }
-    if (g && g.z < -95) {
-        for (key in BUILDINGS) { if (Math.abs(g.x - BUILDINGS[key].x) < 62 && Math.abs(g.z - BUILDINGS[key].z) < 60) { this.panel = null; this.act(game, 'panel', key === 'yard' ? 'factory' : key); return; } }
-    }
-    if (this.panel) { this.panel = null; this.renderAll(game); return; }
+    audioInit();
+    if (u) { this.sel = u.leader || u; this.renderAll(game); return; }
     if (this.sel && !this.sel.side && !this.sel.dead) {
         if (!g) { return; }
         if (sim.order(this.sel, g.x, g.z)) { this.say(this.sel.toPier ? 'Mothership: coming home to the pier.' : who(this.sel.crew) + ': on the way.', 'ok'); }
@@ -2551,7 +2848,7 @@ PlayState.prototype.dragStart = function(game, px, py) {
 PlayState.prototype.dragMove = function(game, px, py) {
     var d = this.drag, g = game.view.pick(px, py);
     if (!d) { return; }
-    if (!d.live) { d.live = true; this.sel = d.unit; this.panel = null; }
+    if (!d.live) { d.live = true; this.sel = d.unit; }
     d.g = g ? game.sim.clampDest(d.unit.cls, g.x, g.z) : null;
 };
 PlayState.prototype.dragEnd = function(game, px, py) {
@@ -2564,8 +2861,7 @@ PlayState.prototype.dragEnd = function(game, px, py) {
 PlayState.prototype.dragCancel = function() { this.drag = null; };
 PlayState.prototype.keyDown = function(game, k) {
     if (k === 32) { this.act(game, 'pause'); }
-    else if (k === 27) { this.sel = null; this.panel = null; this.renderAll(game); }
-    else if (k >= 49 && k <= 51) { this.act(game, 'panel', BUILDING_ORDER[k - 49]); }
+    else if (k === 27) { this.sel = null; this.renderAll(game); }
     else if (k === 70) { this.act(game, 'speed'); }
     else if (k === 66) { this.act(game, 'view', 'base'); }
     else if (k === 86) { this.act(game, 'view', 'strait'); }
@@ -2785,15 +3081,16 @@ if (DEBUG_START && game.view) {
     var ps = new PlayState();
     game.moveToState(ps);
     var ds = game.sim, dbgI, dbgL = ['sub', 'sub', 'sub', 'sea', 'sea', 'sea', 'air', 'air', 'air', 'land', 'land', 'land', 'sub', 'sea'];
-    ds.credits = 900; ds.base.camp.lv = 1; ds.base.academy.lv = 1; ds.base.yard.lv = 2;
+    ds.credits = 900; ds.base.camp.lv = 1; ds.base.academy.lv = 1; ds.base.yard.lv = 3; ds.line.lv.trucks = 2; ds.line.lv.slices = 2; ds.line.syncTrucks();
+    for (dbgI = 0; dbgI < 900; dbgI++) { ds.line.step(0.05); } ds.line.sfx.length = 0; ds.line.pops.length = 0; ds.stock.length = 0; ds.credits = 900;
     for (dbgI = 0; dbgI < dbgL.length; dbgI++) { ds.stock.push({ cls: dbgL[dbgI], tpl: JSON.parse(JSON.stringify(ds.templates[dbgL[dbgI]])) }); }
     for (dbgI = 0; dbgI < 5; dbgI++) { ds.base.camp.ready.push(ds.newBunny('operator')); }
     ds.base.academy.ready.push(ds.newBunny('officer')); ds.base.academy.ready.push(ds.newBunny('officer'));
     var dbgM = ds.commission();
     ds.launchFlight('opSub', true);
     var dbgF = ds.launchFlight('opSea', false), dbgT = ds.launchFlight('opLand', false);
-    ds.train('operator'); ds.train('operator'); ds.train('officer'); ds.queueDrone('air'); ds.queueDrone('sub');
-    if (DEBUG_START === 'play') { while (ds.time < 1.6) { ds.step(0.05); } ds.events.length = 0; ps.panel = 'camp'; }
+    ds.train('operator'); ds.train('operator'); ds.train('officer');
+    if (DEBUG_START === 'play') { while (ds.time < 1.6) { ds.step(0.05); } ds.events.length = 0; }
     else if (DEBUG_START === 'ship') { ds.launchFlight('opAir', true); while (ds.time < 6) { ds.step(0.05); } ds.events.length = 0; ps.sel = dbgM; game.view.goTo(0.22, 80, 60); }
     else {
         ds.launchFlight('opAir', true);
