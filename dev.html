@@ -1138,7 +1138,7 @@ function View3D(canvas) {
     this.add(this.box(16000, 10, 6000, green), 0, 0, -3000, null, true);
     for (i = 0; i < 3; i++) {
         this.add(this.box(720, 11, 70, sand), BEACHES[i].x, 0.6, -30, null, true);
-        var lab = this.label(BEACHES[i].name); lab.position.set(BEACHES[i].x + 280, 26, -30); this.scene.add(lab); this.labels.push(lab);
+        var lab = this.label(BEACHES[i].name); lab.position.set(BEACHES[i].x + (i === 1 ? 470 : 280), 26, -30); this.scene.add(lab); this.labels.push(lab);
     }
     for (i = 0; i < 26; i++) {
         var hh = 240 + ((i * 97) % 520);
@@ -1175,7 +1175,7 @@ function View3D(canvas) {
     //  Dock workers. They are only animation: a few wander the yard, and pairs carry drones to the ship.
     this.crew = [];
     var routes = [[-130, -118, -20, -125], [60, -15, 60, 150], [40, -150, 60, -110], [90, -118, 230, -118], [62, 30, 62, 120]];
-    for (i = 0; i < routes.length; i++) { var wk = this.worker(i % 2 ? 0xf08a2c : 0x2f6fb5); wk.userData.route = routes[i]; wk.userData.ph = i * 1.7; this.scene.add(wk); this.crew.push(wk); }
+    for (i = 0; i < routes.length; i++) { var wk = this.worker(); wk.scale.multiplyScalar(1.4); wk.userData.route = routes[i]; wk.userData.ph = i * 1.7; this.scene.add(wk); this.crew.push(wk); }
     this.carry = {};
     this.stratRings = [];
 
@@ -1325,7 +1325,7 @@ View3D.prototype.syncBase = function(sim, t) {
     }
     function show(bn, x, z, h, moving, hop) {
         var m = self.bun[bn.id];
-        if (!m) { m = self.bunny(bn.seed, bn.rank); self.scene.add(m); self.bun[bn.id] = m; }
+        if (!m) { m = self.bunny(bn.seed, bn.rank); m.scale.multiplyScalar(1.5); self.scene.add(m); self.bun[bn.id] = m; }
         used[bn.id] = 1;
         self.walk(m, x, z, h, t + bn.seed, moving, false);
         if (hop) { m.position.y += Math.abs(Math.sin(t * 3 + bn.seed)) * 1.6; }
@@ -1372,16 +1372,16 @@ View3D.prototype.syncYard = function(units, t) {
             var ld = u.loading[j], c = this.carry[ld.id];
             if (!c) {
                 c = { g: new THREE.Group(), a: this.worker(), b: this.worker(), m: KIT.build(ld.cls, ld.tpl.role), o: ld.flight ? this.bunny(ld.flight.bunny.seed, 'operator') : null };
-                if (c.o) { this.scene.add(c.o); }
+                if (c.o) { c.o.scale.multiplyScalar(1.5); this.scene.add(c.o); } c.a.scale.multiplyScalar(1.4); c.b.scale.multiplyScalar(1.4);
                 c.m.scale.setScalar(ld.cls === 'air' ? 0.5 : 0.6); c.g.add(c.m); this.scene.add(c.g); this.scene.add(c.a); this.scene.add(c.b);
                 this.carry[ld.id] = c;
             }
             used[ld.id] = 1;
-            var p = clamp(1 - ld.t / 2.4, 0, 1), at = alongPath(p), at2 = alongPath(Math.min(1, p + 0.09)), moving = p > 0 && p < 1, sx = Math.sin(at.h) * 9, sz = Math.cos(at.h) * 9;
+            var p = clamp(1 - ld.t / 2.4, 0, 1), at = alongPath(p), at2 = alongPath(Math.min(1, p + 0.09)), moving = p > 0 && p < 1, sx = Math.sin(at.h) * 11, sz = Math.cos(at.h) * 11;
             if (p <= 0) { busy = 1; }
             this.walk(c.a, at.x + sx, at.z + sz, at.h, t, moving, true); this.walk(c.b, at.x - sx, at.z - sz, at.h, t + 0.5, moving, true);
             if (c.o) { this.walk(c.o, at2.x, at2.z, at2.h, t + 0.2, moving, false); c.o.visible = p < 0.98; }
-            c.g.position.set(at.x, c.a.position.y + 15.5 + (moving ? Math.abs(Math.sin(t * 11)) * 0.5 : 0), at.z); c.g.rotation.y = at.h;
+            c.g.position.set(at.x, c.a.position.y + 21 + (moving ? Math.abs(Math.sin(t * 11)) * 0.5 : 0), at.z); c.g.rotation.y = at.h;
         }
     }
     for (var id in this.carry) { if (!used[id]) { c = this.carry[id]; this.scene.remove(c.g); this.scene.remove(c.a); this.scene.remove(c.b); if (c.o) { this.scene.remove(c.o); } delete this.carry[id]; } }
@@ -2301,8 +2301,8 @@ PlayState.prototype.act = function(game, act, a, b) {
     var sim = game.sim, o = this.sel, v = game.view, u;
     if (act === 'panel') {
         this.panel = this.panel === a ? null : a; this.sel = null;
-        var s = v && v.toScreen({ x: BUILDINGS[a].x, z: BUILDINGS[a].z, dom: 'land' });
-        if (v && this.panel && (s.behind || s.x < 0 || s.x > v.w || s.y < 0 || s.y > v.h)) { v.goTo(BASE_VIEW[0], BASE_VIEW[1], BASE_VIEW[2]); }
+        //  Frame the building in the part of the screen the panel leaves free.
+        if (v && this.panel) { v.goTo(0.3, (a === 'factory' ? -120 : BUILDINGS[a].x) - 140, BUILDINGS[a].z + 60); }
     }
     else if (act === 'closep') { this.panel = null; }
     else if (act === 'up') { sim.upgrade(a); }
