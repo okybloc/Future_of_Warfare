@@ -276,7 +276,7 @@ var BUILDINGS = {
     factory: { name: 'Drone Factory', x: DOOR.x - 52, z: DOOR.z, unlock: 0,   up: [90, 180],  does: 'Builds any drone you queue. It takes time; higher levels build faster.' },
     yard:    { name: 'Drone Yard',    x: BASE.x - 445, z: BASE.z - 40, unlock: 0, max: 5, up: [60, 120, 220, 400], does: 'Finished drones wait here until an operator takes them. Higher levels hold more.' },
     camp:    { name: 'Boot Camp',     x: BASE.x + 170, z: BASE.z - 80, unlock: 60,  up: [80, 160],  does: 'Trains operators. Each drives a crewed craft with loyal wingman drones: 3, then 4, then 5.' },
-    academy: { name: 'Academy',       x: BASE.x + 310, z: BASE.z - 80, unlock: 110, up: [110, 200], does: 'Trains officers. An officer takes a mothership beyond the home link and commands the operators with it.' }
+    academy: { name: 'Academy',       x: BASE.x + 385, z: BASE.z - 80, unlock: 110, up: [110, 200], does: 'Trains officers. An officer takes a mothership beyond the home link and commands the operators with it.' }
 };
 var BUILDING_ORDER = ['factory', 'camp', 'academy'];
 var TRAIN = { operator: { cost: 25, time: 9, at: 'camp' }, officer: { cost: 50, time: 16, at: 'academy' } };
@@ -1315,7 +1315,7 @@ function View3D(canvas) {
         var hh = 240 + ((i * 97) % 520);
         this.add(new T.Mesh(new T.ConeGeometry(hh * 1.25, hh, 6), i % 3 ? green : greenDark), -6500 + i * 520 + ((i * 53) % 200), hh / 2, -900 - ((i * 131) % 1400));
     }
-    this.add(this.box(1030, 11.5, 200, conc), BASE.x - 30, 0.5, BASE.z - 50);
+    this.add(this.box(1070, 11.5, 200, conc), BASE.x - 10, 0.5, BASE.z - 50);
     this.add(this.box(26, 5, 190, conc), BASE.x + 60, 2, 70);
     this.add(this.cyl(3, 4, 60, conc), BASE.x + 240, 36, BASE.z - 20);
     this.dish = new T.Mesh(new T.CylinderGeometry(16, 5, 7, 14), this.mat.role.scout); this.dish.rotation.z = Math.PI / 2.4; this.add(this.dish, BASE.x + 240, 72, BASE.z - 20);
@@ -2621,24 +2621,24 @@ PlayState.prototype.tagList = function(game) {
     tag('yard', Y.x, Y.z - 68, 'Drone yard', 'holds ' + yardCap(b.yard.lv) + (ym ? '' : ' → ' + yardCap(b.yard.lv + 1)), ym ? 'MAX' : '$' + yc, ym ? 'max' : st(yc), function() { sim.upgrade('yard'); });
     function bld(key, B, what, nextTxt) {
         var s = b[key], c = sim.upgradeCost(key), mx = s.lv >= MAX_LV;
-        tag(key, B.x + (s.lv ? 38 : 0), B.z - 48, B.name, s.lv ? nextTxt : what, mx ? 'MAX' : (s.lv ? '$' : 'OPEN $') + c, mx ? 'max' : st(c), function() { sim.upgrade(key); });
+        tag(key, B.x + (s.lv ? 44 : 0), B.z - 48, B.name, s.lv ? nextTxt : what, mx ? 'MAX' : (s.lv ? '$' : 'OPEN $') + c, mx ? 'max' : st(c), function() { sim.upgrade(key); });
     }
     bld('camp', C, 'trains operators', 'wingmen ' + wingSize(b.camp.lv) + (b.camp.lv < MAX_LV ? ' → ' + wingSize(b.camp.lv + 1) : ''));
     bld('academy', A, 'trains officers', b.academy.lv < 2 ? 'faster training' : 'ships carry 2 → 3 flights');
     if (b.camp.lv) {
-        tag('trainOp', C.x - 40, C.z - 48, 'Train operator', b.camp.ready.length + ' ready' + (b.camp.queue.length ? ' · ' + b.camp.queue.length + ' training' : ''), '$' + TRAIN.operator.cost, st(TRAIN.operator.cost, b.camp.queue.length < 3), function() { sim.train('operator'); });
+        tag('trainOp', C.x - 44, C.z - 48, 'Train operator', b.camp.ready.length + ' ready' + (b.camp.queue.length ? ' · ' + b.camp.queue.length + ' training' : ''), '$' + TRAIN.operator.cost, st(TRAIN.operator.cost, b.camp.queue.length < 3), function() { sim.train('operator'); });
         var size = wingSize(b.camp.lv);
         CRAFT_ORDER.forEach(function(craft, n) {
             var have = sim.stockOf(CLASSES[craft].wing);
-            tag(craft, C.x + 72 - n * 47, C.z - 94, SHORT[craft] + ' flight', Math.min(have, size) + '/' + size + ' ' + SHORT[CLASSES[craft].wing].toLowerCase() + ' drones', '$' + CRAFT_COST, st(CRAFT_COST, b.camp.ready.length > 0 && have > 0),
+            tag(craft, C.x + 112 - n * 64, C.z - 104, SHORT[craft] + ' flight', Math.min(have, size) + '/' + size + ' drones', '$' + CRAFT_COST, st(CRAFT_COST, b.camp.ready.length > 0 && have > 0),
                 function() { var u = sim.launchFlight(craft, self.board); if (u && u.cls !== 'mother') { self.sel = u; self.say(who(u.crew) + ' is ready. Tap the sea to send the flight.', 'ok'); } });
         });
     }
     if (b.academy.lv) {
-        tag('trainOff', A.x - 40, A.z - 48, 'Train officer', b.academy.ready.length + ' ready' + (b.academy.queue.length ? ' · ' + b.academy.queue.length + ' training' : ''), '$' + TRAIN.officer.cost, st(TRAIN.officer.cost, b.academy.queue.length < 3), function() { sim.train('officer'); });
+        tag('trainOff', A.x - 44, A.z - 48, 'Train officer', b.academy.ready.length + ' ready' + (b.academy.queue.length ? ' · ' + b.academy.queue.length + ' training' : ''), '$' + TRAIN.officer.cost, st(TRAIN.officer.cost, b.academy.queue.length < 3), function() { sim.train('officer'); });
         var dm = sim.dockedMother();
-        tag('commission', A.x, A.z - 94, 'Commission mothership', dm ? 'the pier is occupied' : b.academy.ready.length ? 'an officer is ready' : 'needs an officer', '$' + MOTHER_COST, st(MOTHER_COST, !dm && b.academy.ready.length > 0), function() { var u = sim.commission(); if (u) { self.sel = u; } });
-        if (sim.freeBay(dm)) { tag('board', C.x - 120, C.z - 94, 'New flights', self.board ? 'board the mothership' : 'go out alone', 'SWITCH', 'ok', function() { self.board = !self.board; }); }
+        tag('commission', A.x, A.z - 104, 'Commission mothership', dm ? 'the pier is occupied' : b.academy.ready.length ? 'an officer is ready' : 'needs an officer', '$' + MOTHER_COST, st(MOTHER_COST, !dm && b.academy.ready.length > 0), function() { var u = sim.commission(); if (u) { self.sel = u; } });
+        if (sim.freeBay(dm)) { tag('board', C.x - 150, C.z - 104, 'New flights', self.board ? 'board the mothership' : 'go out alone', 'SWITCH', 'ok', function() { self.board = !self.board; }); }
     }
     return out;
 };
