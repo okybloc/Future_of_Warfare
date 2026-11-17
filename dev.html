@@ -2520,7 +2520,7 @@ function who(b) { return (b.rank === 'officer' ? 'Officer ' : 'Operator ') + b.n
 /* ------------------------------------------------------------------
     Welcome
    ------------------------------------------------------------------ */
-var BASE_VIEW = [0.33, BASE.x - 205, BASE.z - 60];
+var BASE_VIEW = [0.37, BASE.x - 120, BASE.z - 70];
 function WelcomeState() {}
 WelcomeState.prototype.enter = function(game) {
     $('hud').classList.add('hidden'); $('replaybar').classList.add('hidden');
@@ -2630,15 +2630,15 @@ PlayState.prototype.tagList = function(game) {
         var size = wingSize(b.camp.lv);
         CRAFT_ORDER.forEach(function(craft, n) {
             var have = sim.stockOf(CLASSES[craft].wing);
-            tag(craft, C.x + 66 - n * 44, C.z + 128, SHORT[craft] + ' flight', Math.min(have, size) + '/' + size + ' ' + SHORT[CLASSES[craft].wing].toLowerCase() + ' drones', '$' + CRAFT_COST, st(CRAFT_COST, b.camp.ready.length > 0 && have > 0),
+            tag(craft, C.x + 72 - n * 47, C.z - 94, SHORT[craft] + ' flight', Math.min(have, size) + '/' + size + ' ' + SHORT[CLASSES[craft].wing].toLowerCase() + ' drones', '$' + CRAFT_COST, st(CRAFT_COST, b.camp.ready.length > 0 && have > 0),
                 function() { var u = sim.launchFlight(craft, self.board); if (u && u.cls !== 'mother') { self.sel = u; self.say(who(u.crew) + ' is ready. Tap the sea to send the flight.', 'ok'); } });
         });
     }
     if (b.academy.lv) {
         tag('trainOff', A.x - 40, A.z - 48, 'Train officer', b.academy.ready.length + ' ready' + (b.academy.queue.length ? ' · ' + b.academy.queue.length + ' training' : ''), '$' + TRAIN.officer.cost, st(TRAIN.officer.cost, b.academy.queue.length < 3), function() { sim.train('officer'); });
         var dm = sim.dockedMother();
-        tag('commission', BERTH.x + 20, -52, 'Commission mothership', dm ? 'the pier is occupied' : b.academy.ready.length ? 'an officer is ready' : 'needs an officer', '$' + MOTHER_COST, st(MOTHER_COST, !dm && b.academy.ready.length > 0), function() { var u = sim.commission(); if (u) { self.sel = u; } });
-        if (sim.freeBay(dm)) { tag('board', BERTH.x - 70, -52, 'New flights', self.board ? 'board the mothership' : 'go out alone', 'SWITCH', 'ok', function() { self.board = !self.board; }); }
+        tag('commission', A.x, A.z - 94, 'Commission mothership', dm ? 'the pier is occupied' : b.academy.ready.length ? 'an officer is ready' : 'needs an officer', '$' + MOTHER_COST, st(MOTHER_COST, !dm && b.academy.ready.length > 0), function() { var u = sim.commission(); if (u) { self.sel = u; } });
+        if (sim.freeBay(dm)) { tag('board', C.x - 120, C.z - 94, 'New flights', self.board ? 'board the mothership' : 'go out alone', 'SWITCH', 'ok', function() { self.board = !self.board; }); }
     }
     return out;
 };
@@ -2760,9 +2760,9 @@ PlayState.prototype.renderHint = function(game) {
     if (sim.phase < 1) {
         if (!b.camp.lv) { h = 'The line builds drones by itself. Tap <b>BOOT CAMP</b> to open it: drones need an operator'; }
         else if (!b.camp.ready.length && !b.camp.queue.length && !crews) { h = 'Tap <b>TRAIN OPERATOR</b>'; }
-        else if (b.camp.ready.length && sim.stock.length && !crews) { h = 'Tap a <b>FLIGHT</b> tag by the parade ground, then tap the sea'; }
+        else if (b.camp.ready.length && sim.stock.length && !crews) { h = 'Tap a <b>FLIGHT</b> tag in front of the Boot Camp, then tap the sea'; }
         else if (crews && !b.academy.lv) { h = 'Spend on the green tags to speed the line. Open the <b>ACADEMY</b> for motherships'; }
-        else if (b.academy.lv && b.academy.ready.length && !dm && sim.stats.mother.built === 0) { h = 'Tap <b>COMMISSION MOTHERSHIP</b> by the pier'; }
+        else if (b.academy.lv && b.academy.ready.length && !dm && sim.stats.mother.built === 0) { h = 'Tap <b>COMMISSION MOTHERSHIP</b> in front of the Academy'; }
         else if (dm && dm.cargoList.length + dm.loading.length === 0) { h = 'Flight tags now send operators aboard the mothership'; }
         else if (dm && dm.cargoList.length) { h = 'Tap the mothership, pick a strategy, then <b>tap the sea</b>'; }
     }
