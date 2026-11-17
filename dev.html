@@ -116,6 +116,36 @@ td:first-child,th:first-child{text-align:left;}
 #replaybar input{flex:1;accent-color:var(--acc);touch-action:auto;}
 #rotate{display:none;position:fixed;inset:0;z-index:30;background:#0a0f16;align-items:center;justify-content:center;text-align:center;font-size:20px;font-weight:800;padding:30px;}
 @media (orientation:portrait) and (max-width:600px){#rotate{display:flex;}}
+/* v10 */
+#selp{width:372px;max-height:calc(100vh / var(--ui,1) - 86px);overflow:auto;}
+#ctrl{gap:8px;} #ctrlb{display:flex;gap:6px;}
+.money small{display:block;font-size:9.5px;color:var(--acc);font-weight:800;line-height:1;}
+.dk{width:84px;} .dk.on{background:rgba(255,255,255,0.22);} .dk.locked{border-style:dashed;opacity:.8;}
+.dk .cost{display:flex;align-items:center;gap:3px;} .dk .cost svg{width:11px;height:11px;}
+.dk .sil svg{fill:none;}
+.tag.dimtag{background:#3a4350;color:#fff;}
+.yardchip{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:0 8px;font-size:13px;color:var(--dim);} .yardchip b{font-size:20px;color:#fff;line-height:1;}
+.tiles{display:flex;gap:6px;margin:4px 0;}
+.tl{flex:1;display:flex;flex-direction:column;gap:3px;}
+.mk{border:2px solid var(--c);border-radius:13px;display:flex;flex-direction:column;align-items:center;gap:1px;padding:7px 2px 5px;cursor:pointer;background:rgba(255,255,255,0.07);font-size:11px;color:var(--c);}
+.mk b{color:#fff;} .mk svg{width:26px;height:26px;} .mk .cost{color:var(--amber);font-weight:900;font-size:12px;display:flex;align-items:center;gap:2px;} .mk .cost svg{width:12px;height:12px;color:var(--dim);}
+.mk:active{transform:scale(.94);background:rgba(255,255,255,0.2);}
+.rc{border-radius:9px;background:var(--c);color:#000;font-size:9.5px;font-weight:900;letter-spacing:.5px;display:flex;align-items:center;justify-content:center;gap:3px;padding:4px 0;cursor:pointer;}
+.rc svg{width:12px;height:12px;}
+.poor{opacity:.42;}
+.rowl{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:6px 0;min-height:30px;}
+.slot.sm{width:24px;height:24px;border-radius:7px;} .slot.sm svg{width:14px;height:14px;}
+.cnt{display:inline-flex;align-items:center;gap:2px;font-weight:800;font-size:12px;} .cnt svg{width:15px;height:15px;color:var(--dim);}
+.pgw{flex:1;min-width:50px;height:8px;border-radius:4px;background:rgba(255,255,255,0.14);overflow:hidden;} .pg{display:block;height:100%;width:0;background:var(--acc);}
+.face{width:30px;height:30px;flex:none;}
+.fc{display:inline-flex;flex-direction:column;align-items:center;font-size:9px;font-weight:700;line-height:1;} .fc em{font-style:normal;color:var(--dim);} .fc.ld{animation:pulse .7s infinite alternate;}
+.fl{display:inline-flex;align-items:center;gap:4px;border:1.5px solid var(--line);border-radius:11px;padding:2px 8px 2px 3px;background:rgba(255,255,255,0.06);}
+.fl.empty{border-style:dashed;color:var(--dim);font-size:9.5px;font-weight:800;letter-spacing:1px;padding:9px 10px;}
+.flb{display:flex;flex-direction:column;font-size:10.5px;font-weight:800;line-height:1.15;} .flb em{font-style:normal;} .flb span{display:flex;align-items:center;gap:2px;color:var(--dim);} .flb svg{width:12px;height:12px;}
+.ldw{animation:pulse .7s infinite alternate;}
+.seg.off{opacity:.45;}
+.btn.up{display:inline-flex;align-items:center;gap:3px;border-color:var(--amber);color:var(--amber);padding:5px 9px;font-size:11px;} .btn.up svg{width:13px;height:13px;}
+.hd .face{width:34px;height:34px;margin:-4px 0;}
 </style>
 </head>
 <body>
@@ -123,12 +153,11 @@ td:first-child,th:first-child{text-align:left;}
 <div id="hud" class="hidden">
   <div id="goal" class="panel"></div>
   <div id="clock" class="panel live"></div>
-  <div id="ctrl" class="panel live"></div>
+  <div id="ctrl" class="panel live"><div class="money" id="money"></div><div id="ctrlb"></div></div>
   <div id="hint" class="panel live hidden"></div>
   <div id="log" class="panel live"></div>
   <div id="banner" class="panel" style="opacity:0"></div>
   <div id="dock" class="panel live"></div>
-  <div id="roles" class="panel live hidden"></div>
   <div id="selp" class="panel live hidden"></div>
   <div id="dragghost" class="hidden"></div>
 </div>
@@ -189,7 +218,7 @@ function dist(a, b) { var dx = a.x - b.x, dz = a.z - b.z; return Math.sqrt(dx * 
 
 //  What the factory builds: one mothership type and four small drones.
 //  The mothership is a node: it carries six drones past their own range and runs them on a strategy.
-var CLASS_ORDER = ['mother', 'sub', 'sea', 'air', 'land'];
+var CLASS_ORDER;
 var CLASSES = {
     mother: { name: 'Mothership',    dom: 'sea',  big: true,  cost: 45, hp: 44, speed: 44,  range: 5400, cargoN: 6, cargoOf: ['sub', 'sea', 'air'], blurb: 'Carries six drones anywhere in the strait, even to the far coast, and runs them on DEFEND, SCREEN or ATTACK.' },
     sub:    { name: 'Sub Drone',     dom: 'sub',  big: false, cost: 13, hp: 3,  speed: 46,  range: 1700, blurb: 'Runs under the surface. Only undersea drones can touch it.' },
@@ -207,9 +236,51 @@ var STRATEGIES = {
 };
 var STRATEGY_ORDER = ['defend', 'screen', 'attack'];
 
+//  Every drone belongs to a crewed unit. Operators (boot camp) drive a boat, sub, plane or truck with loyal
+//  wingman drones. Officers (academy) command a mothership, which carries operators' flights beyond the home link.
+CLASS_ORDER = ['mother', 'opSea', 'opSub', 'opAir', 'opLand', 'sub', 'sea', 'air', 'land'];
+CLASSES.mother.cargoOf = ['opSea', 'opSub', 'opAir'];
+CLASSES.mother.blurb = 'An officer\'s ship. Carries operators and their wingmen anywhere in the strait and gives them their orders.';
+CLASSES.opSea  = { name: 'Gunboat',       dom: 'sea',  big: false, crew: true, wing: 'sea',  cost: 15, hp: 12, speed: 52,  range: 1900, blurb: 'Operator\'s boat. Leads surface drones.' };
+CLASSES.opSub  = { name: 'Crewed Sub',    dom: 'sub',  big: false, crew: true, wing: 'sub',  cost: 15, hp: 10, speed: 44,  range: 1900, blurb: 'Operator\'s submarine. Leads sub drones.' };
+CLASSES.opAir  = { name: 'Lead Plane',    dom: 'air',  big: false, crew: true, wing: 'air',  cost: 15, hp: 8,  speed: 120, range: 1900, blurb: 'Operator\'s aircraft. Leads air drones.' };
+CLASSES.opLand = { name: 'Command Truck', dom: 'land', big: false, crew: true, wing: 'land', cost: 15, hp: 12, speed: 30,  range: 0,    blurb: 'Operator\'s truck. Leads beach crawlers.' };
+var CRAFT_ORDER = ['opSea', 'opSub', 'opAir', 'opLand'];
+var DRONE_ORDER = ['sub', 'sea', 'air', 'land'];
+
+//  The base. Buildings are unlocked and upgraded with credits.
+var MAX_LV = 3;
+var BUILDINGS = {
+    factory: { name: 'Drone Factory', x: DOOR.x - 52, z: DOOR.z, unlock: 0,   up: [90, 180],  does: 'Builds any drone you queue. It takes time; higher levels build faster.' },
+    yard:    { name: 'Drone Yard',    x: BASE.x - 200, z: BASE.z - 40, unlock: 0, up: [60, 120], does: 'Finished drones wait here until an operator takes them. Higher levels hold more.' },
+    camp:    { name: 'Boot Camp',     x: BASE.x + 170, z: BASE.z - 80, unlock: 60,  up: [80, 160],  does: 'Trains operators. Each drives a crewed craft with loyal wingman drones: 3, then 4, then 5.' },
+    academy: { name: 'Academy',       x: BASE.x + 310, z: BASE.z - 80, unlock: 110, up: [110, 200], does: 'Trains officers. An officer takes a mothership beyond the home link and commands the operators with it.' }
+};
+var BUILDING_ORDER = ['factory', 'camp', 'academy'];
+var TRAIN = { operator: { cost: 25, time: 9, at: 'camp' }, officer: { cost: 50, time: 16, at: 'academy' } };
+var SPEEDUP = [0, 1, 0.7, 0.5];
+var MOTHER_COST = 45, CRAFT_COST = 15;
+function yardCap(lv) { return [0, 8, 14, 22][lv]; }
+function buildTime(cls, lv) { return { sub: 7, sea: 5, air: 4, land: 4 }[cls] * SPEEDUP[lv]; }
+function trainTime(kind, lv) { return TRAIN[kind].time * SPEEDUP[lv]; }
+function wingSize(lv) { return 2 + Math.max(1, lv); }
+function motherBays(lv) { return lv >= 3 ? 3 : 2; }
+function incomeRate(base) { return 1.45 + 0.4 * (base.factory.lv + base.yard.lv + base.camp.lv + base.academy.lv - 2); }
+var BUNNY_NAMES = ['Mochi', 'Clover', 'Hazel', 'Pip', 'Biscuit', 'Juniper', 'Thistle', 'Nori', 'Poppy', 'Sesame', 'Maple', 'Yuzu', 'Pepper', 'Dango', 'Fern', 'Tofu', 'Willow', 'Miso', 'Barley', 'Sorrel', 'Peach', 'Taro', 'Kumo', 'Bramble', 'Azuki', 'Momo', 'Cocoa', 'Sumi'];
+//  How one bunny looks. Every bunny is a little different; the same numbers drive the 3D model and the face in the panels.
+function bunnyLook(seed) {
+    function r(n) { var x = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); }
+    var furs = ['#ffffff', '#f6e7cf', '#e2bd92', '#c9ced6', '#8f95a1', '#7a5646', '#ffdbe6', '#fff0b5', '#3b3f4a'];
+    var scarves = ['#ff5a7a', '#3aa0ff', '#ffd23a', '#58d68d', '#b06cff', '#ff8a1e'];
+    return { fur: furs[Math.floor(r(1) * furs.length)], scarf: scarves[Math.floor(r(2) * scarves.length)], lop: r(3) < 0.28, earTilt: 0.08 + r(4) * 0.4, earLen: 0.85 + r(5) * 0.4,
+        cheeks: r(6) < 0.6, patch: r(7) < 0.3, size: 0.92 + r(8) * 0.18 };
+}
+
+
 //  One big choice per unit: what is it for? Colour always means role.
 var ROLE_ORDER = ['strike', 'defend', 'scout', 'decoy'];
 var ROLES = {
+    crew:   { name: 'CREWED', color: '#f4f1e6', does: 'A bunny is aboard.' },
     strike: { name: 'STRIKE', color: '#ff8a1e', does: 'Sinks ships.' },
     defend: { name: 'DEFEND', color: '#3aa0ff', does: 'Shoots down air drones. On a sea unit it also hunts undersea drones.' },
     scout:  { name: 'SCOUT',  color: '#ffd23a', does: 'Finds and identifies the enemy, and relays your commands further out.' },
@@ -217,6 +288,7 @@ var ROLES = {
 };
 //  Second choice: how is it fitted? [id, name, what it does, extra cost for a small unit]
 var FITS = {
+    crew: [],
     strike: [['swarm', 'Light warheads', 'Fast and cheap. Good against escorts.', 0], ['heavy', 'Heavy warhead', 'Slow and costly. What sinks a landing ship.', 4]],
     defend: [['gun', 'Gun', 'Short reach, constant fire.', 0], ['interceptor', 'Interceptors', 'Long reach, slower shots.', 3]],
     scout:  [['radar', 'Search radar', 'Sees far, identifies contacts.', 0], ['relay', 'Comms relay', 'Sees less, but stretches your command link a long way.', 0]],
@@ -233,7 +305,7 @@ function defaultFit(cls, role) {
 }
 function makeTpl(cls, role) { return { role: role, fit: defaultFit(cls, role), stance: CLASSES[cls].big ? 'hold' : 'push', target: 'landing' }; }
 function defaultTemplates() {
-    return { mother: makeTpl('mother', 'scout'), sub: makeTpl('sub', 'strike'), sea: makeTpl('sea', 'strike'), air: makeTpl('air', 'defend'), land: makeTpl('land', 'strike') };
+    return { mother: makeTpl('mother', 'crew'), sub: makeTpl('sub', 'strike'), sea: makeTpl('sea', 'strike'), air: makeTpl('air', 'defend'), land: makeTpl('land', 'strike') };
 }
 function fitExtra(role, fit) {
     for (var i = 0; i < FITS[role].length; i++) { if (FITS[role][i][0] === fit) { return FITS[role][i][3]; } }
@@ -262,19 +334,22 @@ var WEATHER = {
 };
 
 var PHASES = [
-    { name: 'CLEARING THE WAY',   prep: 80, weather: 'clear', brief: 'Undersea drones and strike UAVs come first to break your defences.', groups: [['sub', 7], ['uav', 10]] },
+    { name: 'CLEARING THE WAY',   prep: 120, weather: 'clear', brief: 'Undersea drones and strike UAVs come first to break your defences.', groups: [['sub', 7], ['uav', 10]] },
     { name: 'UNMANNED SCREEN',    prep: 75, weather: 'haze',  brief: 'Escort boats and an EW ship push out ahead of the landing force.', groups: [['escort', 8], ['uav', 8], ['jammer', 1], ['sub', 4]] },
     { name: 'FIRST LANDING WAVE', prep: 75, weather: 'fog',   brief: 'The first landing ships, led and flanked by escorts.', groups: [['lst', 8], ['escort', 8], ['uav', 8], ['jammer', 2]] },
     { name: 'MAIN LANDING FORCE', prep: 80, weather: 'rain',  brief: 'The main body, with an assault ship that counts as three.', groups: [['lst', 10], ['lhd', 1], ['escort', 10], ['uav', 12], ['sub', 6], ['jammer', 2]] },
     { name: 'FINAL PUSH',         prep: 70, weather: 'storm', brief: 'Everything that is left, in the worst weather.', groups: [['lst', 10], ['lhd', 1], ['escort', 10], ['uav', 14], ['sub', 6], ['jammer', 2]] }
 ];
 var WAVE_GAP = 105;        //  seconds after a wave appears before the next countdown would end
-var START_CREDITS = 280, PHASE_CREDITS = 240;
+var START_CREDITS = 300, PHASE_CREDITS = 100;
 var BASE_COMMS = 1900, BASE_RADAR = 2300, JAM_RADIUS = 650;
 
 //  Numbers a unit fights with, from its class, role and fit.
 function unitSpec(cls, role, fit) {
     var c = CLASSES[cls], big = c.big, s = { sensor: big ? 450 : 260, relay: big ? 600 : 0, hp: c.hp, speed: c.speed, mode: 'none', jam: 0, lure: 1 };
+    if (cls === 'mother') { s.sensor = 1400; s.relay = 1800; return s; }
+    //  Crewed craft carry a light gun to protect themselves and see further than a drone.
+    if (c.crew) { s.mode = 'guard'; s.range = 300; s.dmg = 0.6; s.reload = 0.3; s.sensor = 650; return s; }
     if (role === 'strike') {
         //  Small sea and air strike drones are one-way. Carriers and land units fire from where they stand.
         if (!big && c.dom !== 'land') { s.mode = 'ram'; s.dmg = fit === 'heavy' ? 18 : 7; if (fit === 'heavy') { s.speed *= 0.8; } }
@@ -321,6 +396,9 @@ function Sim() {
     this.over = null;
     this.templates = defaultTemplates();
     this.raids = 0;
+    this.base = { factory: { lv: 1, queue: [] }, yard: { lv: 1 }, camp: { lv: 0, queue: [], ready: [] }, academy: { lv: 0, queue: [], ready: [] } };
+    this.stock = [];            //  finished drones waiting in the yard: { cls, tpl }
+    this.bunnyN = 0; this.incomeAcc = 0; this.crewLost = 0;
     this.stats = {};
     this.sunk = {};
     var i;
@@ -349,7 +427,7 @@ Sim.prototype.makeUnit = function(cls, tpl, x, z) {
     var c = CLASSES[cls], spec = unitSpec(cls, tpl.role, tpl.fit);
     var u = { id: this.nextId++, side: 0, cls: cls, dom: c.dom, big: c.big, role: tpl.role, fit: tpl.fit, stance: tpl.stance, target: tpl.target,
         spec: spec, x: x, z: z, hp: spec.hp, maxHp: spec.hp, dest: { x: x, z: z }, leader: null, slot: 0, cargo: 0, cargoCls: null, cargoTpl: null,
-        cool: 0, cool2: 0, cargoList: [], loading: [], strategy: 'screen', docked: false, emerge: 1, raidT: 0, tgt: null, contact: true, why: '', slaved: false, rtb: false, dead: false, kills: 0, value: 0, releaseT: 0, heading: 0, doing: 'Launching.' };
+        cool: 0, cool2: 0, cargoList: [], loading: [], strategy: 'screen', docked: false, emerge: 1, raidT: 0, boss: null, crew: null, seed: 0, bay: 0, wingMax: 0, orphan: false, tgt: null, contact: true, why: '', slaved: false, rtb: false, dead: false, kills: 0, value: 0, releaseT: 0, heading: 0, doing: 'Launching.' };
     this.rec.meta[u.id] = { side: 0, kind: cls, role: u.role, fit: u.fit, stance: u.stance };
     this.units.push(u);
     return u;
@@ -380,44 +458,143 @@ Sim.prototype.buy = function(cls, x, z) {
     return u;
 };
 
-//  Load one drone onto the mothership at the pier. The dock workers take a few seconds to carry it aboard.
-Sim.prototype.load = function(m, cls) {
-    var c = CLASSES[cls], t = this.templates[cls], cost = smallCost(cls, t);
-    if (!m || m.dead || !m.docked) { this.emit({ k: 'msg', text: 'Drones can only be loaded while the mothership is at the pier.', bad: true }); return false; }
-    if (CLASSES.mother.cargoOf.indexOf(cls) < 0) { this.emit({ k: 'msg', text: c.name + 's cannot go aboard.', bad: true }); return false; }
-    if (m.cargoList.length + m.loading.length >= CLASSES.mother.cargoN) { this.emit({ k: 'msg', text: 'The mothership is full.', bad: true }); return false; }
-    if (cost > this.credits) { this.emit({ k: 'msg', text: 'Not enough credits ($' + cost + ').', bad: true }); return false; }
-    this.credits -= cost; this.stats[cls].spent += cost;
-    m.loading.push({ id: this.nextId++, cls: cls, tpl: JSON.parse(JSON.stringify(t)), t: 2.4 + m.loading.length * 0.9, cost: cost });
-    this.emit({ k: 'built', cls: cls });
+/* ---- The base: unlock, upgrade, build, train. ---- */
+Sim.prototype.spend = function(cost, what) {
+    if (cost > this.credits) { this.emit({ k: 'msg', text: 'Not enough credits for ' + what + ' ($' + cost + ').', bad: true }); return false; }
+    this.credits -= cost; return true;
+};
+Sim.prototype.upgradeCost = function(key) { var b = this.base[key]; return b.lv === 0 ? BUILDINGS[key].unlock : b.lv >= MAX_LV ? 0 : BUILDINGS[key].up[b.lv - 1]; };
+Sim.prototype.upgrade = function(key) {
+    var b = this.base[key], B = BUILDINGS[key];
+    if (b.lv >= MAX_LV) { return false; }
+    if (!this.spend(this.upgradeCost(key), b.lv ? 'the upgrade' : 'the ' + B.name)) { return false; }
+    b.lv++;
+    this.emit({ k: 'msg', text: B.name + (b.lv === 1 ? ' opened.' : ' upgraded to level ' + b.lv + '.'), good: true });
+    this.emit({ k: 'upgrade', key: key });
     return true;
 };
-//  A drone already built and waiting at the base can be carried aboard too.
-Sim.prototype.embark = function(u, m) {
-    if (!m || m.dead || !m.docked || u.dead || u.leader || u.big || CLASSES.mother.cargoOf.indexOf(u.cls) < 0) { return false; }
-    if (dist(u, BASE) > 500) { this.emit({ k: 'msg', text: 'Too far from the pier to load.', bad: true }); return false; }
-    if (m.cargoList.length + m.loading.length >= CLASSES.mother.cargoN) { this.emit({ k: 'msg', text: 'The mothership is full.', bad: true }); return false; }
-    u.dead = true; u.recovered = true;
-    m.loading.push({ id: this.nextId++, cls: u.cls, tpl: { role: u.role, fit: u.fit, stance: u.stance, target: u.target }, t: 2.4 + m.loading.length * 0.9, cost: u.value });
+Sim.prototype.queueDrone = function(cls) {
+    var f = this.base.factory, t = this.templates[cls], cost = smallCost(cls, t);
+    if (f.queue.length >= 6) { this.emit({ k: 'msg', text: 'The factory queue is full.', bad: true }); return false; }
+    if (!this.spend(cost, 'a ' + CLASSES[cls].name)) { return false; }
+    this.stats[cls].spent += cost;
+    f.queue.push({ cls: cls, tpl: JSON.parse(JSON.stringify(t)), t: buildTime(cls, f.lv), t0: buildTime(cls, f.lv), cost: cost });
     return true;
+};
+Sim.prototype.newBunny = function(rank) {
+    var n = this.bunnyN++;
+    return { id: this.nextId++, seed: 1 + Math.floor(Math.random() * 9999), name: BUNNY_NAMES[(n * 7 + Math.floor(Math.random() * 3)) % BUNNY_NAMES.length], rank: rank };
+};
+Sim.prototype.train = function(kind) {
+    var T = TRAIN[kind], b = this.base[T.at];
+    if (!b.lv) { this.emit({ k: 'msg', text: 'Open the ' + BUILDINGS[T.at].name + ' first.', bad: true }); return false; }
+    if (b.queue.length >= 3) { this.emit({ k: 'msg', text: 'Three are in training already.', bad: true }); return false; }
+    if (!this.spend(T.cost, 'training')) { return false; }
+    b.queue.push({ bunny: this.newBunny(kind), t: trainTime(kind, b.lv), t0: trainTime(kind, b.lv) });
+    return true;
+};
+Sim.prototype.stockOf = function(cls) { var n = 0; for (var i = 0; i < this.stock.length; i++) { if (this.stock[i].cls === cls) { n++; } } return n; };
+Sim.prototype.takeStock = function(cls, n) {
+    var out = [];
+    for (var i = 0; i < this.stock.length && out.length < n; i++) { if (this.stock[i].cls === cls) { out.push(this.stock.splice(i, 1)[0]); i--; } }
+    return out;
+};
+Sim.prototype.stepBase = function(dt) {
+    var b = this.base, q, i, kinds = ['camp', 'academy'];
+    this.incomeAcc += incomeRate(b) * dt;
+    while (this.incomeAcc >= 1) { this.incomeAcc -= 1; this.credits++; }
+    q = b.factory.queue;
+    if (q.length) {
+        q[0].t -= dt;
+        if (q[0].t <= 0) {
+            if (this.stock.length < yardCap(b.yard.lv)) { var d = q.shift(); this.stock.push({ cls: d.cls, tpl: d.tpl }); this.stats[d.cls].built++; this.emit({ k: 'built', cls: d.cls }); }
+            else { q[0].t = 0; }
+        }
+    }
+    for (i = 0; i < 2; i++) {
+        q = b[kinds[i]].queue;
+        if (q.length) { q[0].t -= dt; if (q[0].t <= 0) { var g = q.shift(); b[kinds[i]].ready.push(g.bunny); this.emit({ k: 'msg', text: (g.bunny.rank === 'officer' ? 'Officer ' : 'Operator ') + g.bunny.name + ' is ready for duty.', good: true }); } }
+    }
+};
+Sim.prototype.freeBay = function(m) { return m && !m.dead && m.docked && m.cargoList.length + m.loading.length < motherBays(this.base.academy.lv); };
+//  An officer takes command of a new mothership at the pier.
+Sim.prototype.commission = function() {
+    var a = this.base.academy;
+    if (!a.ready.length) { this.emit({ k: 'msg', text: 'A mothership needs an officer. Train one at the Academy.', bad: true }); return null; }
+    if (this.dockedMother()) { this.emit({ k: 'msg', text: 'The pier is occupied. Send the docked mothership out first.', bad: true }); return null; }
+    if (!this.spend(MOTHER_COST, 'a Mothership')) { return null; }
+    var u = this.makeUnit('mother', this.templates.mother, BERTH.x, BERTH.z), o = a.ready.shift();
+    u.docked = true; u.dest = { x: BERTH.x, z: BERTH.z }; u.crew = o; u.seed = o.seed; u.value = MOTHER_COST + TRAIN.officer.cost;
+    this.rec.meta[u.id].seed = o.seed;
+    this.stats.mother.built++; this.stats.mother.spent += MOTHER_COST;
+    this.emit({ k: 'msg', text: 'Officer ' + o.name + ' takes command of a new mothership.', good: true });
+    return u;
+};
+//  An operator takes a craft and as many wingmen of its kind as the yard holds. It boards the docked mothership, or goes out alone.
+Sim.prototype.launchFlight = function(craft, board) {
+    var c = this.base.camp, C = CLASSES[craft], size = wingSize(c.lv), dm = this.dockedMother();
+    if (!c.ready.length) { this.emit({ k: 'msg', text: 'No operator is ready. Train one at the Boot Camp.', bad: true }); return null; }
+    if (!this.stockOf(C.wing)) { this.emit({ k: 'msg', text: 'No ' + CLASSES[C.wing].name + 's in the yard. Build some at the Factory.', bad: true }); return null; }
+    if (!this.spend(CRAFT_COST, 'a ' + C.name)) { return null; }
+    var f = { craft: craft, bunny: c.ready.shift(), wings: this.takeStock(C.wing, size), size: size };
+    this.stats[craft].built++; this.stats[craft].spent += CRAFT_COST;
+    if (board && craft !== 'opLand' && this.freeBay(dm)) {
+        dm.loading.push({ id: this.nextId++, flight: f, cls: C.wing, tpl: f.wings[0].tpl, t: 2.4 + dm.loading.length * 1.2 });
+        this.emit({ k: 'msg', text: 'Operator ' + f.bunny.name + ' is boarding the mothership with ' + f.wings.length + ' wingmen.', good: true });
+        return dm;
+    }
+    var land = C.dom === 'land', air = C.dom === 'air';
+    var u = this.spawnFlight(f, land ? DOOR.x + 10 : air ? BASE.x - 60 : DOOR.x + 18, land ? DOOR.z : air ? -70 : 34, null);
+    u.dest = land ? { x: BASE.x - 300 + Math.random() * 200, z: -28 } : { x: BASE.x - 120 + Math.random() * 110, z: 120 + Math.random() * 80 };
+    return u;
+};
+Sim.prototype.spawnFlight = function(f, x, z, boss) {
+    var lead = this.makeUnit(f.craft, { role: 'crew', fit: '', stance: 'hold', target: 'near' }, x, z), i;
+    lead.crew = f.bunny; lead.seed = f.bunny.seed; lead.wingMax = f.size; lead.boss = boss; lead.strategy = boss ? boss.strategy : 'screen';
+    lead.value = CRAFT_COST + TRAIN.operator.cost; this.rec.meta[lead.id].seed = lead.seed;
+    for (i = 0; i < f.wings.length; i++) { this.addWing(lead, f.wings[i], i); }
+    return lead;
+};
+Sim.prototype.addWing = function(lead, w, slot) {
+    var k = this.makeUnit(w.cls, w.tpl, lead.x, lead.z);
+    k.leader = lead; k.slot = slot; k.slaved = true; k.value = smallCost(w.cls, w.tpl);
+    if (k.spec.mode === 'ram') { lead.hadStrike = true; if (lead.boss) { lead.boss.hadStrike = true; } }
+    return k;
+};
+Sim.prototype.wingsOf = function(lead, ramOnly) {
+    var out = [];
+    for (var i = 0; i < this.units.length; i++) { var k = this.units[i]; if (k.leader === lead && !k.dead && (!ramOnly || k.spec.mode === 'ram')) { out.push(k); } }
+    return out;
+};
+//  Top a flight up from the yard. Works on a flight aboard a ship (plain data) or one at sea (a unit).
+Sim.prototype.refill = function(lead) {
+    var have = this.wingsOf(lead), got = this.takeStock(CLASSES[lead.cls].wing, lead.wingMax - have.length), i;
+    for (i = 0; i < got.length; i++) { this.addWing(lead, got[i], have.length + i); }
+    return got.length;
 };
 Sim.prototype.setStrategy = function(m, st) {
-    if (m.dead || !(m.docked || m.contact)) { return false; }
+    if (!this.canCommand(m)) { return false; }
     m.strategy = st;
     return true;
 };
 
 //  Can the player steer this unit right now?
-Sim.prototype.canCommand = function(u) { return !u.dead && (u.contact || u.docked) && !u.slaved; };
+//  An officer answers wherever the ship is (unless jammed). An operator alone answers only inside the link. Wingmen never do.
+Sim.prototype.canCommand = function(u) {
+    if (u.dead || u.leader || u.boss || u.orphan) { return false; }
+    if (u.cls === 'mother') { return u.docked || !u.jammed; }
+    return u.contact;
+};
 
 Sim.prototype.order = function(u, x, z) {
     if (!this.canCommand(u)) { return false; }
-    u.rtb = false; u.toPier = false;
+    u.rtb = false; u.toPier = false; u.resupply = false;
     if (u.cls === 'mother') {
         //  Sending it near the pier means: come home and tie up. Anything still on the quay is refunded.
         if (Math.abs(x - BERTH.x) < 170 && z < 240) { u.toPier = true; u.dest = { x: BERTH.x, z: BERTH.z }; return true; }
-        for (var i = 0; i < u.loading.length; i++) { this.credits += u.loading[i].cost; }
-        u.loading = []; u.docked = false;
+        //  Anyone still walking down the pier jumps aboard.
+        for (var i = 0; i < u.loading.length; i++) { u.cargoList.push(u.loading[i].flight); }
+        u.loading = []; u.cargo = u.cargoList.length; u.docked = false;
     }
     u.dest = this.clampDest(u.cls, x, z);
     return true;
@@ -482,7 +659,10 @@ Sim.prototype.hitUnit = function(u, dmg, cause) {
         u.dead = true;
         this.lostValue += u.value || CLASSES[u.cls].cost; this.stats[u.cls].lost++;
         this.emit({ k: 'boom', x: u.x, z: u.z, big: u.big, side: 0, dom: u.dom });
-        if (u.big) { this.emit({ k: 'msg', text: CLASSES[u.cls].name + ' lost to ' + cause + (u.cargo ? ' with ' + u.cargo + ' drones still aboard.' : '.'), bad: true }); }
+        if (u.crew) {
+            this.crewLost += 1 + (u.cargoList ? u.cargoList.length : 0);
+            this.emit({ k: 'msg', text: (u.crew.rank === 'officer' ? 'Officer ' : 'Operator ') + u.crew.name + ' is lost with the ' + CLASSES[u.cls].name.toLowerCase() + (u.cargo ? ' and ' + u.cargo + ' flights aboard.' : '.'), bad: true });
+        }
     }
 };
 
@@ -532,8 +712,10 @@ Sim.prototype.updateUnit = function(u, dt) {
     //  Fresh from the factory: roll out of the door before doing anything else.
     if (u.fresh) { if (u.emerge > 0) { u.x += dt * 18; u.doing = 'Rolling out of the factory.'; return; } u.fresh = false; }
     var pushy = u.stance === 'push', reachO = 0;
-    if (u.leader && u.leader.dead) { u.leader = null; u.dest = { x: u.x, z: u.z }; }
-    u.slaved = !!u.leader;
+    //  Operator lost: the wingmen keep their last orders where they are, and nobody can re-task them.
+    if (u.leader && u.leader.dead) { u.stance = u.leader.strategy === 'defend' ? 'hold' : 'push'; u.leader = null; u.orphan = true; u.dest = { x: u.x, z: u.z }; }
+    if (u.boss && u.boss.dead) { u.boss = null; u.dest = { x: u.x, z: u.z }; }
+    u.slaved = !!(u.leader || u.boss);
 
     if (u.rtb) {
         u.doing = 'Returning to base.';
@@ -549,12 +731,22 @@ Sim.prototype.updateUnit = function(u, dt) {
     //  Station: beside the carrier it belongs to, beside the nearest carrier, or where it was sent.
     if (u.leader) {
         //  The mothership's strategy decides where its drones sit, how far they roam and what they go for.
-        var stg = u.leader.strategy, a = u.slot * Math.PI / 3 + 0.6, rad = stg === 'attack' ? 150 : 115;
-        if (stg === 'screen') { a = (u.slot - 3.5) * 0.44; rad = 430; }
+        var stg = u.leader.strategy, a = u.slot * Math.PI * 0.4 + 0.6, rad = stg === 'attack' ? 80 : 50;
+        if (stg === 'screen') { a = (u.slot - (u.leader.wingMax - 1) / 2) * 0.5; rad = 190; }
+        if (u.dom === 'land') { a = Math.PI / 2; rad = (u.slot + 1) * 46 * (u.slot % 2 ? 1 : -1); }
         ax = u.leader.x + Math.sin(a) * rad; az = u.leader.z + Math.cos(a) * rad;
         reachO = STRATEGIES[stg].reach; pushy = stg === 'attack';
         u.target = stg === 'attack' ? 'landing' : stg === 'screen' ? 'escort' : 'near';
         if (u.leader.rtb) { u.rtb = true; }
+    } else if (u.boss) {
+        //  An operator with a mothership takes the officer's strategy and a station off the ship.
+        var bs = u.boss.strategy, nb = motherBays(this.base.academy.lv), off = u.bay - (nb - 1) / 2;
+        u.strategy = bs;
+        if (bs === 'defend') { ax = u.boss.x + Math.sin(u.bay * 2.1 + 0.5) * 170; az = u.boss.z + Math.cos(u.bay * 2.1 + 0.5) * 170; }
+        else { ax = u.boss.x + off * (bs === 'screen' ? 330 : 230); az = u.boss.z + (bs === 'screen' ? 420 : 270); }
+        if (u.boss.toPier || u.boss.rtb) { ax = u.boss.x + off * 90; az = u.boss.z - 60; }
+    } else if (u.crew && u.cls !== 'mother' && u.resupply) {
+        ax = DOOR.x + 18 + (u.id % 5) * 22 - 44; az = u.dom === 'land' ? -28 : 70;
     } else if (u.stance === 'escort' && !u.big) {
         var near = null, nd = 1e9;
         for (i = 0; i < this.units.length; i++) {
@@ -567,6 +759,20 @@ Sim.prototype.updateUnit = function(u, dt) {
 
     var gx = ax, gz = az, reach = reachO || (pushy ? 1000 : 430);
     u.doing = 'On station.';
+    //  An operator out alone comes back for more wingmen when the strike drones are spent, then returns to station.
+    if (u.crew && u.cls !== 'mother' && !u.boss) {
+        var mine = this.wingsOf(u), ram = this.wingsOf(u, true).length;
+        if (!u.resupply && ((u.hadStrike && !ram) || !mine.length) && u.dom !== 'land') { u.resupply = true; u.waitT = 14; this.emit({ k: 'msg', text: 'Operator ' + u.crew.name + ' is out of drones. Coming back for more.' }); }
+        if (u.dom === 'land' && mine.length < u.wingMax) { this.refill(u); }
+        if (u.resupply) {
+            u.doing = 'Returning to the yard for more wingmen.';
+            if (dist(u, { x: ax, z: az }) < 60) {
+                u.hadStrike = false; this.refill(u); u.waitT -= dt; mine = this.wingsOf(u);
+                u.doing = 'Waiting for drones from the factory.';
+                if (mine.length >= u.wingMax || (mine.length > 0 && u.waitT <= 0)) { u.resupply = false; }
+            }
+        }
+    }
 
     //  Carriers release what they carry when they arrive, or as soon as a threat is close.
     if (u.cls === 'mother') {
@@ -577,13 +783,17 @@ Sim.prototype.updateUnit = function(u, dt) {
             u.dest = busyPier ? { x: BERTH.x + 150, z: BERTH.z + 150 } : { x: BERTH.x, z: BERTH.z };
             if (!busyPier && dist(u, BERTH) < 30) {
                 u.toPier = false; u.docked = true; u.hadStrike = false;
-                //  Drones still flying with it come back aboard.
+                //  Operators still out with it come back aboard with whatever wingmen they have left.
                 for (i = 0; i < this.units.length; i++) {
                     var kd = this.units[i];
-                    if (kd.leader === u && !kd.dead && u.cargoList.length < CLASSES.mother.cargoN) { kd.dead = true; kd.recovered = true; u.cargoList.push({ cls: kd.cls, tpl: { role: kd.role, fit: kd.fit, stance: kd.stance, target: kd.target } }); }
+                    if (kd.boss === u && !kd.dead && u.cargoList.length < 3) {
+                        var wl = this.wingsOf(kd), wj, fl = { craft: kd.cls, bunny: kd.crew, wings: [], size: kd.wingMax };
+                        for (wj = 0; wj < wl.length; wj++) { fl.wings.push({ cls: wl[wj].cls, tpl: { role: wl[wj].role, fit: wl[wj].fit, stance: wl[wj].stance, target: wl[wj].target } }); wl[wj].dead = true; wl[wj].recovered = true; }
+                        kd.dead = true; kd.recovered = true; u.cargoList.push(fl);
+                    }
                 }
                 u.cargo = u.cargoList.length;
-                this.emit({ k: 'msg', text: 'Mothership tied up at the pier. Drag drones onto it to reload.' });
+                this.emit({ k: 'msg', text: 'Mothership tied up at the pier. Its flights are taking on fresh wingmen.' });
             }
         } else if (!u.docked && u.z > WORLD.far - 520 && u.strategy === 'attack') {
             //  Raiding: it stays on the far coast until it has taken real damage, then withdraws by itself.
@@ -591,14 +801,18 @@ Sim.prototype.updateUnit = function(u, dt) {
         } else if (!u.docked && u.cargo === 0 && u.hadStrike && u.strategy !== 'defend') {
             //  Autonomy: once its strike drones are spent it brings itself home to reload.
             var left = 0;
-            for (i = 0; i < this.units.length; i++) { if (this.units[i].leader === u && !this.units[i].dead && this.units[i].spec.mode === 'ram') { left++; } }
+            for (i = 0; i < this.units.length; i++) { var wk = this.units[i]; if (wk.leader && wk.leader.boss === u && !wk.dead && wk.spec.mode === 'ram') { left++; } }
             if (!left) { u.toPier = true; u.hadStrike = false; this.emit({ k: 'msg', text: 'Mothership out of strike drones. Heading home to reload.' }); }
         }
         for (i = u.loading.length - 1; i >= 0; i--) {
             u.loading[i].t -= dt;
-            if (u.loading[i].t <= 0) { var ld = u.loading.splice(i, 1)[0]; u.cargoList.push({ cls: ld.cls, tpl: ld.tpl }); u.cargo = u.cargoList.length; this.emit({ k: 'loaded', cls: ld.cls }); }
+            if (u.loading[i].t <= 0) { var ld = u.loading.splice(i, 1)[0]; u.cargoList.push(ld.flight); u.cargo = u.cargoList.length; this.emit({ k: 'loaded', cls: ld.cls }); }
         }
-        if (u.docked) { u.doing = u.loading.length ? 'Loading at the pier.' : u.cargo + ' of 6 drones aboard. Tap the sea to sail.'; return; }
+        if (u.docked) {
+            //  At the pier, flights aboard are topped up from the yard.
+            for (i = 0; i < u.cargoList.length; i++) { var cf = u.cargoList[i], more = this.takeStock(CLASSES[cf.craft].wing, cf.size - cf.wings.length); while (more.length) { cf.wings.push(more.shift()); } }
+            u.doing = u.loading.length ? 'Operators boarding.' : u.cargo + ' flights aboard. Tap the sea to sail.'; return;
+        }
         //  At the far coast on ATTACK: raid the embarkation ports, under fire from the shore.
         if (u.z > WORLD.far - 520) {
             u.raidT += dt;
@@ -612,18 +826,14 @@ Sim.prototype.updateUnit = function(u, dt) {
     if (u.big && u.cargo > 0) {
         var arrived = dist(u, u.dest) < 40, threat = false;
         for (i = 0; i < this.enemies.length && !threat; i++) { if (this.enemies[i].det > 0 && dist(this.enemies[i], u) < 1100) { threat = true; } }
-        u.doing = 'In transit with ' + u.cargo + ' drones aboard.';
+        u.doing = 'In transit with ' + u.cargo + ' flights aboard.';
         if (arrived || threat) {
             u.releaseT -= dt;
             if (u.releaseT <= 0) {
-                u.releaseT = 0.7;
-                var load = u.cargoList.shift(), kc = CLASSES[load.cls];
-                var kid = this.makeUnit(load.cls, load.tpl, u.x, kc.dom === 'land' ? -30 : u.z);
-                kid.leader = u; kid.slot = u.cargo; kid.slaved = true; if (kid.spec.mode === 'ram') { u.hadStrike = true; } kid.value = smallCost(load.cls, load.tpl);
-                //  A land drone dropped by a truck works the beach by itself.
-                if (kid.dom === 'land') { kid.leader = null; kid.dest = { x: u.x + (kid.slot - 1.5) * 60, z: -25 }; }
+                u.releaseT = 1.2;
+                var load = u.cargoList.shift(), lead = this.spawnFlight(load, u.x, u.z, u);
+                lead.bay = u.cargo - 1;
                 u.cargo--;
-                this.stats[load.cls].built++;
                 this.emit({ k: 'release', x: u.x, z: u.z });
             }
         }
@@ -640,7 +850,7 @@ Sim.prototype.updateUnit = function(u, dt) {
             }
             return;
         }
-        u.doing = u.leader ? 'Holding beside its carrier.' : 'On station, nothing in reach.';
+        u.doing = u.leader ? 'Flying with its operator.' : 'On station, nothing in reach.';
     } else if (s.mode === 'battery') {
         e = this.pickEnemy(u, u.x, u.z, s.range, true);
         if (e) {
@@ -767,7 +977,7 @@ Sim.prototype.sense = function(dt) {
         if (u.jammed && this.inFriendlyJam(u)) { u.jammed = false; }
         u.contact = false;
         u.why = u.jammed ? 'JAMMED by enemy electronic warfare' : (W.comms < 0.8 ? 'OUT OF LINK: weather has cut your range' : 'OUT OF LINK: too far from base or a relay');
-        if (!u.jammed && dist(u, BASE) < BASE_COMMS * W.comms) { u.contact = true; open.push(u); }
+        if (!u.jammed && (dist(u, BASE) < BASE_COMMS * W.comms || u.cls === 'mother')) { u.contact = true; open.push(u); }
     }
     //  The link hops outward through carriers and relay scouts.
     while (open.length) {
@@ -778,7 +988,7 @@ Sim.prototype.sense = function(dt) {
             if (!u.contact && !u.jammed && !u.dead && dist(u, r) < rr) { u.contact = true; open.push(u); }
         }
     }
-    for (i = 0; i < this.units.length; i++) { u = this.units[i]; if (u.docked) { u.contact = true; } if (u.contact) { u.why = u.leader ? 'Follows its mothership\'s strategy' : 'IN LINK'; } }
+    for (i = 0; i < this.units.length; i++) { u = this.units[i]; if (u.docked) { u.contact = true; } if (u.contact) { u.why = 'IN LINK'; } if (u.leader) { u.why = 'Flies with its operator'; } if (u.boss) { u.why = 'Takes orders from the officer aboard the mothership'; } if (u.orphan) { u.why = 'OPERATOR LOST: keeping its last orders'; } }
 };
 
 Sim.prototype.step = function(dt) {
@@ -807,6 +1017,7 @@ Sim.prototype.step = function(dt) {
     var wantWeather = PHASES[turning ? nextP : this.phase].weather;
     if (wantWeather !== this.weather) { this.weather = wantWeather; this.emit({ k: 'msg', text: 'Weather: ' + WEATHER[wantWeather].name + '. ' + WEATHER[wantWeather].note }); }
 
+    this.stepBase(dt);
     this.sense(dt);
     for (i = 0; i < this.units.length; i++) { if (!this.units[i].dead) { this.updateUnit(this.units[i], dt); } }
     for (i = 0; i < this.enemies.length; i++) { if (!this.enemies[i].dead) { this.updateEnemy(this.enemies[i], dt); } }
@@ -933,17 +1144,10 @@ function View3D(canvas) {
         var hh = 240 + ((i * 97) % 520);
         this.add(new T.Mesh(new T.ConeGeometry(hh * 1.25, hh, 6), i % 3 ? green : greenDark), -6500 + i * 520 + ((i * 53) % 200), hh / 2, -900 - ((i * 131) % 1400));
     }
-    this.add(this.box(340, 11.5, 150, conc), BASE.x, 0.5, BASE.z - 30);
+    this.add(this.box(800, 11.5, 190, conc), BASE.x + 50, 0.5, BASE.z - 45);
     this.add(this.box(26, 5, 190, conc), BASE.x + 60, 2, 70);
-    for (i = 0; i < 2; i++) {
-        var hx = BASE.x + [-175, 105][i];
-        this.add(this.box(70, 26, 50, this.mat.hull), hx, 19, BASE.z - 70);
-        var roof = new T.Mesh(new T.CylinderGeometry(25, 25, 70, 12, 1, false, 0, Math.PI), this.mat.deck); roof.rotation.z = Math.PI / 2; roof.rotation.y = Math.PI / 2;
-        this.add(roof, hx, 32, BASE.z - 70);
-        this.add(this.box(40, 18, 2, this.mat.hazard), hx, 15, BASE.z - 44, null, true);
-    }
-    this.add(this.cyl(3, 4, 60, conc), BASE.x + 140, 36, BASE.z - 40);
-    this.dish = new T.Mesh(new T.CylinderGeometry(16, 5, 7, 14), this.mat.role.scout); this.dish.rotation.z = Math.PI / 2.4; this.add(this.dish, BASE.x + 140, 72, BASE.z - 40);
+    this.add(this.cyl(3, 4, 60, conc), BASE.x + 240, 36, BASE.z - 20);
+    this.dish = new T.Mesh(new T.CylinderGeometry(16, 5, 7, 14), this.mat.role.scout); this.dish.rotation.z = Math.PI / 2.4; this.add(this.dish, BASE.x + 240, 72, BASE.z - 20);
 
     //  The drone factory: saw-tooth roof, chimney, and the roller door the drones come out of.
     var fx = DOOR.x - 52, fz = DOOR.z, wall = this.toon(0xd9c8a0), dark = this.toon(0x2b2f36);
@@ -970,10 +1174,52 @@ function View3D(canvas) {
     this.add(this.box(5, 5, 50, this.mat.hazard), BASE.x + 54, 48, BERTH.z - 52);
     //  Dock workers. They are only animation: a few wander the yard, and pairs carry drones to the ship.
     this.crew = [];
-    var routes = [[-150, -130, -20, -125], [60, -15, 60, 150], [40, -150, 60, -110], [90, -130, 140, -150], [62, 30, 62, 120]];
+    var routes = [[-130, -118, -20, -125], [60, -15, 60, 150], [40, -150, 60, -110], [90, -118, 230, -118], [62, 30, 62, 120]];
     for (i = 0; i < routes.length; i++) { var wk = this.worker(i % 2 ? 0xf08a2c : 0x2f6fb5); wk.userData.route = routes[i]; wk.userData.ph = i * 1.7; this.scene.add(wk); this.crew.push(wk); }
     this.carry = {};
     this.stratRings = [];
+
+    //  The rest of the base: drone yard, boot camp, academy. Each can be locked (a building site) or built, with a star per level.
+    this.bld = {}; this.bun = {}; this.yardSlots = [];
+    var self = this;
+    function site(key, make) {
+        var B = BUILDINGS[key], built = new T.Group(), locked = new T.Group(), stars = [], k;
+        built.position.set(B.x, 6.2, B.z); locked.position.set(B.x, 6.2, B.z); self.scene.add(built); self.scene.add(locked);
+        if (make) { make(built); }
+        self.add(self.box(92, 1.4, 56, self.tm('#8d949c')), 0, 0.8, 0, locked, true);
+        for (k = 0; k < 4; k++) { self.add(self.cyl(1.1, 1.1, 34, self.mat.hazard), k % 2 ? 42 : -42, 17, k < 2 ? 24 : -24, locked); }
+        self.add(self.box(86, 1.6, 1.6, self.mat.hazard), 0, 33, 24, locked, true); self.add(self.box(86, 1.6, 1.6, self.mat.hazard), 0, 33, -24, locked, true);
+        self.add(self.box(22, 14, 3, self.tm('#2b2f36')), 0, 12, 0, locked);
+        self.add(self.box(8, 7, 3.6, self.mat.hazard), 0, 11, 0, locked, true);
+        for (k = 0; k < 3; k++) { var st = new T.Mesh(new T.OctahedronGeometry(4.2), new T.MeshBasicMaterial({ color: 0xffd23a, fog: false })); st.position.set(B.x + 12 - k * 12, key === 'yard' ? 30 : 84, B.z); self.scene.add(st); stars.push(st); }
+        self.bld[key] = { built: built, locked: locked, stars: stars };
+    }
+    site('factory', null);
+    site('yard', function(g) {
+        self.add(self.box(118, 0.8, 100, self.tm('#6c757d')), 0, 0.5, 0, g, true);
+        self.add(self.box(118, 1, 2, self.mat.hazard), 0, 0.7, 50, g, true); self.add(self.box(118, 1, 2, self.mat.hazard), 0, 0.7, -50, g, true);
+        self.add(self.box(2, 1, 100, self.mat.hazard), 59, 0.7, 0, g, true); self.add(self.box(2, 1, 100, self.mat.hazard), -59, 0.7, 0, g, true);
+        self.add(self.box(16, 14, 12, self.tm('#b5503c')), -48, 7, -58, g);
+    });
+    site('camp', function(g) {
+        self.add(self.box(84, 18, 36, self.tm('#93a77c')), 0, 9, 0, g);
+        self.add(self.box(90, 3.5, 42, self.tm('#4f6b4a')), 0, 19.5, 0, g);
+        self.add(self.box(22, 12, 22, self.tm('#93a77c')), 26, 27, 0, g); self.add(self.box(26, 3, 26, self.tm('#4f6b4a')), 26, 34, 0, g);
+        self.add(self.cyl(0.8, 0.8, 40, self.tm('#e8edf0')), -34, 30, 10, g); self.add(self.box(14, 8, 0.8, self.tm('#3aa0ff')), -41, 46, 10, g, true);
+        //  Parade ground with a running track and hurdles.
+        var tr = new T.Mesh(new T.RingGeometry(24, 30, 28), new T.MeshBasicMaterial({ color: 0xd98a4a, side: T.DoubleSide })); tr.rotation.x = -Math.PI / 2; tr.scale.set(1.25, 0.55, 1); tr.position.set(0, 0.6, 74); g.add(tr);
+        for (var h = 0; h < 3; h++) { self.add(self.box(1, 4, 9, self.tm('#ffffff')), -18 + h * 18, 2.6, 58, g, true); }
+    });
+    site('academy', function(g) {
+        self.add(self.box(78, 30, 36, self.tm('#f1ece0')), 0, 15, 0, g);
+        self.add(self.box(84, 4, 42, self.tm('#1f3a6b')), 0, 32, 0, g);
+        self.add(self.box(18, 60, 18, self.tm('#f1ece0')), 24, 30, 0, g);
+        var cone = new T.Mesh(new T.ConeGeometry(14, 16, 4), self.tm('#e8c04a')); cone.rotation.y = Math.PI / 4; self.add(cone, 24, 68, 0, g);
+        self.add(new T.Mesh(new T.CircleGeometry(5, 16), new T.MeshBasicMaterial({ color: 0x1f3a6b, side: T.DoubleSide })), 24, 50, -9.3, g, true);
+        for (var c2 = 0; c2 < 4; c2++) { self.add(self.cyl(1.8, 1.8, 26, self.tm('#ffffff')), -30 + c2 * 14, 13, 20, g); }
+        self.add(self.box(60, 2, 10, self.tm('#d9d2c0')), -9, 1, 26, g, true);
+        self.add(self.cyl(0.8, 0.8, 30, self.tm('#e8edf0')), -34, 49, 0, g); self.add(self.box(14, 8, 0.8, self.tm('#e8c04a')), -41, 60, 0, g, true);
+    });
 
     //  The far coast: flat silhouettes, and the sun that sets behind them.
     var far = this.toon(0x8d93a6);
@@ -1024,17 +1270,79 @@ View3D.prototype.add = function(m, x, y, z, parent, noLine) {
     return m;
 };
 //  A dock worker: overalls, hard hat, two legs that swing when walking.
-View3D.prototype.worker = function(color) {
-    var T = THREE, g = new T.Group(), suit = this.toon(color), skin = this.toon(0xf1c9a0), hat = this.toon(0xffd23a), boot = this.toon(0x2b2f36);
-    this.add(this.cyl(1.7, 2.1, 4.6, suit, 8), 0, 5.3, 0, g);
-    this.add(new T.Mesh(new T.SphereGeometry(1.7, 10, 8), skin), 0, 9, 0, g);
-    this.add(this.cyl(2.1, 2.3, 1.1, hat, 10), 0, 10.2, 0, g);
-    g.userData.legs = [this.add(this.box(1.3, 3.2, 1.5, boot), -0.9, 1.6, 0, g, true), this.add(this.box(1.3, 3.2, 1.5, boot), 0.9, 1.6, 0, g, true)];
-    g.userData.arms = [this.add(this.box(1, 3.6, 1, suit), -2.4, 6, 0, g, true), this.add(this.box(1, 3.6, 1, suit), 2.4, 6, 0, g, true)];
+View3D.prototype.tm = function(c) { this._tm = this._tm || {}; return this._tm[c] || (this._tm[c] = this.toon(new THREE.Color(c).getHex())); };
+//  A chibi bunny: big head, long ears, small body. 'dock' crew wear hard hats, operators sailor caps, officers peaked caps.
+View3D.prototype.bunny = function(seed, rank) {
+    var T = THREE, L = bunnyLook(seed), g = new T.Group(), fur = this.tm(L.fur), pink = this.tm('#ff9db5'), dark = this.tm('#22262e'), white = this.tm('#ffffff'), navy = this.tm('#1f3a6b'), e, k;
+    var suit = rank === 'officer' ? navy : rank === 'operator' ? this.tm('#f4f6fa') : this.tm(seed % 2 ? '#f08a2c' : '#2f6fb5');
+    this.add(this.cyl(1.7, 2.3, 4.4, suit, 10), 0, 5, 0, g);
+    this.add(this.cyl(2.0, 2.15, 0.9, this.tm(rank === 'officer' ? '#e8c04a' : L.scarf), 10), 0, 7.3, 0, g, true);
+    if (rank === 'operator') { this.add(this.box(2.6, 1.6, 0.5, navy), 0, 6.2, 1.9, g, true); }
+    if (rank === 'officer') { for (k = 0; k < 2; k++) { this.add(new T.Mesh(new T.SphereGeometry(0.35, 6, 5), this.tm('#e8c04a')), 0, 4.4 + k * 1.3, 2.2, g, true); } }
+    var head = new T.Mesh(new T.SphereGeometry(3.1, 14, 12), fur); head.scale.set(1.08, 0.95, 1); this.add(head, 0, 10.3, 0, g);
+    for (e = -1; e <= 1; e += 2) {
+        var len = 5.6 * L.earLen, ear = new T.Group();
+        this.add(this.cyl(0.85, 0.7, len, fur, 8), 0, len / 2, 0, ear); this.add(this.box(0.7, len * 0.7, 0.3, pink), 0, len / 2, 0.62, ear, true);
+        if (L.lop) { ear.position.set(e * 2.3, 12.3, 0); ear.rotation.z = -e * 2.25; } else { ear.position.set(e * 1.35, 12.5, 0); ear.rotation.z = -e * L.earTilt; ear.rotation.x = -0.12; }
+        g.add(ear);
+    }
+    for (e = -1; e <= 1; e += 2) {
+        this.add(new T.Mesh(new T.SphereGeometry(0.52, 8, 6), dark), e * 1.2, 10.6, 2.72, g, true);
+        this.add(new T.Mesh(new T.SphereGeometry(0.18, 6, 5), new T.MeshBasicMaterial({ color: 0xffffff })), e * 1.05, 10.85, 3.15, g, true);
+        if (L.cheeks) { var ck = new T.Mesh(new T.SphereGeometry(0.62, 8, 6), pink); ck.scale.set(1, 0.6, 0.4); this.add(ck, e * 2.0, 9.5, 2.45, g, true); }
+        this.add(this.box(0.9, 3.2, 0.9, suit), e * 2.5, 5.6, 0, g, true);
+    }
+    this.add(new T.Mesh(new T.SphereGeometry(0.33, 6, 5), pink), 0, 9.75, 3.08, g, true);
+    if (L.patch) { var pt = new T.Mesh(new T.SphereGeometry(1.05, 8, 6), this.tm('#b98f6b')); pt.scale.set(1, 1, 0.35); this.add(pt, 1.25, 10.6, 2.45, g, true); }
+    if (rank === 'officer') { this.add(this.cyl(2.35, 2.0, 1.2, navy, 12), 0, 13.3, 0.2, g); this.add(this.box(3.2, 0.35, 1.7, dark), 0, 12.85, 2.3, g, true); this.add(new T.Mesh(new T.SphereGeometry(0.45, 6, 5), this.tm('#e8c04a')), 0, 13.4, 2.15, g, true); }
+    else if (rank === 'operator') { this.add(this.cyl(2.0, 2.3, 1.0, white, 12), 0, 13.2, 0, g); this.add(this.cyl(2.34, 2.34, 0.35, navy, 12), 0, 12.8, 0, g, true); }
+    else { this.add(this.cyl(1.7, 2.4, 1.3, this.tm('#ffd23a'), 12), 0, 13.2, 0, g); }
+    this.add(new T.Mesh(new T.SphereGeometry(1.0, 8, 6), white), 0, 3.7, -2.2, g, true);
+    g.userData.legs = [this.add(this.box(1.2, 2.8, 1.5, dark), -0.9, 1.5, 0, g, true), this.add(this.box(1.2, 2.8, 1.5, dark), 0.9, 1.5, 0, g, true)];
+    g.userData.arms = [g.children[g.children.length - 6] || g.userData.legs[0], g.userData.legs[1]];
+    g.userData.arms = [];
+    for (k = 0; k < g.children.length; k++) { var ch = g.children[k]; if (ch.geometry && ch.geometry.parameters && ch.geometry.parameters.height === 3.2 && ch.geometry.parameters.width === 0.9) { g.userData.arms.push(ch); } }
+    g.scale.setScalar(L.size);
     return g;
 };
+View3D.prototype.worker = function() { return this.bunny(1 + Math.floor(Math.random() * 9999), 'dock'); };
+//  Buildings, the drones parked in the yard, and the bunnies training or waiting outside.
+View3D.prototype.syncBase = function(sim, t) {
+    var key, i, b, used = {}, self = this;
+    for (key in this.bld) {
+        b = this.bld[key]; var lv = sim.base[key].lv;
+        b.built.visible = lv > 0; b.locked.visible = lv === 0;
+        for (i = 0; i < 3; i++) { b.stars[i].visible = i < lv; b.stars[i].rotation.y = t * 1.5 + i; }
+    }
+    var Y = BUILDINGS.yard;
+    for (i = 0; i < 22; i++) {
+        var slot = this.yardSlots[i] || (this.yardSlots[i] = { g: null, key: '' }), it = sim.stock[i], k2 = it ? it.cls + it.tpl.role : '';
+        if (slot.key !== k2) {
+            if (slot.g) { this.scene.remove(slot.g); slot.g = null; }
+            if (it) { slot.g = KIT.build(it.cls, it.tpl.role); slot.g.scale.setScalar(it.cls === 'air' ? 0.5 : 0.62); slot.g.position.set(Y.x + 46 - (i % 6) * 18.4, it.cls === 'sub' ? 9.5 : 7.4, Y.z - 36 + Math.floor(i / 6) * 24); slot.g.rotation.y = Math.PI; this.scene.add(slot.g); }
+            slot.key = k2;
+        }
+    }
+    function show(bn, x, z, h, moving, hop) {
+        var m = self.bun[bn.id];
+        if (!m) { m = self.bunny(bn.seed, bn.rank); self.scene.add(m); self.bun[bn.id] = m; }
+        used[bn.id] = 1;
+        self.walk(m, x, z, h, t + bn.seed, moving, false);
+        if (hop) { m.position.y += Math.abs(Math.sin(t * 3 + bn.seed)) * 1.6; }
+    }
+    var kinds = ['camp', 'academy'], n;
+    for (n = 0; n < 2; n++) {
+        var B = BUILDINGS[kinds[n]], st = sim.base[kinds[n]];
+        for (i = 0; i < st.ready.length; i++) { show(st.ready[i], B.x + 38 - i * 10, B.z + 40, 0, false, true); }
+        for (i = 0; i < st.queue.length; i++) {
+            if (n === 0) { var a = t * 1.3 + i * 2.1; show(st.queue[i].bunny, B.x + Math.sin(a) * 34, B.z + 74 + Math.cos(a) * 15, a + Math.PI / 2, true, false); }
+            else { var ph = (t * 0.25 + i * 0.4) % 2, kk = ph < 1 ? ph : 2 - ph; show(st.queue[i].bunny, B.x - 34 + kk * 56, B.z + 60 + i * 12, ph < 1 ? Math.PI / 2 : -Math.PI / 2, true, false); }
+        }
+    }
+    for (var id in this.bun) { if (!used[id]) { this.scene.remove(this.bun[id]); delete this.bun[id]; } }
+};
 View3D.prototype.walk = function(w, x, z, heading, t, moving, armsUp) {
-    w.position.set(x, z < -24 ? 6.3 : z < 170 && Math.abs(x - (BASE.x + 60)) < 16 ? 4.6 : 6.3, z); w.rotation.y = heading;
+    w.position.set(x, z < -24 ? 6.4 : z < 170 && Math.abs(x - (BASE.x + 60)) < 16 ? 4.6 : 6.3, z); w.rotation.y = heading;
     var sw = moving ? Math.sin(t * 11) * 0.7 : 0;
     w.userData.legs[0].rotation.x = sw; w.userData.legs[1].rotation.x = -sw;
     w.userData.arms[0].rotation.x = armsUp ? Math.PI : -sw; w.userData.arms[1].rotation.x = armsUp ? Math.PI : sw;
@@ -1063,18 +1371,20 @@ View3D.prototype.syncYard = function(units, t) {
         for (j = 0; j < u.loading.length; j++) {
             var ld = u.loading[j], c = this.carry[ld.id];
             if (!c) {
-                c = { g: new THREE.Group(), a: this.worker(0x2f6fb5), b: this.worker(0xf08a2c), m: KIT.build(ld.cls, ld.tpl.role) };
+                c = { g: new THREE.Group(), a: this.worker(), b: this.worker(), m: KIT.build(ld.cls, ld.tpl.role), o: ld.flight ? this.bunny(ld.flight.bunny.seed, 'operator') : null };
+                if (c.o) { this.scene.add(c.o); }
                 c.m.scale.setScalar(ld.cls === 'air' ? 0.5 : 0.6); c.g.add(c.m); this.scene.add(c.g); this.scene.add(c.a); this.scene.add(c.b);
                 this.carry[ld.id] = c;
             }
             used[ld.id] = 1;
-            var p = clamp(1 - ld.t / 2.4, 0, 1), at = alongPath(p), moving = p > 0 && p < 1, sx = Math.sin(at.h) * 9, sz = Math.cos(at.h) * 9;
+            var p = clamp(1 - ld.t / 2.4, 0, 1), at = alongPath(p), at2 = alongPath(Math.min(1, p + 0.09)), moving = p > 0 && p < 1, sx = Math.sin(at.h) * 9, sz = Math.cos(at.h) * 9;
             if (p <= 0) { busy = 1; }
             this.walk(c.a, at.x + sx, at.z + sz, at.h, t, moving, true); this.walk(c.b, at.x - sx, at.z - sz, at.h, t + 0.5, moving, true);
-            c.g.position.set(at.x, c.a.position.y + 12.5 + (moving ? Math.abs(Math.sin(t * 11)) * 0.5 : 0), at.z); c.g.rotation.y = at.h;
+            if (c.o) { this.walk(c.o, at2.x, at2.z, at2.h, t + 0.2, moving, false); c.o.visible = p < 0.98; }
+            c.g.position.set(at.x, c.a.position.y + 15.5 + (moving ? Math.abs(Math.sin(t * 11)) * 0.5 : 0), at.z); c.g.rotation.y = at.h;
         }
     }
-    for (var id in this.carry) { if (!used[id]) { c = this.carry[id]; this.scene.remove(c.g); this.scene.remove(c.a); this.scene.remove(c.b); delete this.carry[id]; } }
+    for (var id in this.carry) { if (!used[id]) { c = this.carry[id]; this.scene.remove(c.g); this.scene.remove(c.a); this.scene.remove(c.b); if (c.o) { this.scene.remove(c.o); } delete this.carry[id]; } }
     //  The door glows and the chimney puffs while something is being built.
     this.doorGlow.material.opacity += ((busy > 0 ? 0.85 : 0) - this.doorGlow.material.opacity) * 0.15;
     for (i = 0; i < this.puffs.length; i++) {
@@ -1119,6 +1429,7 @@ View3D.prototype.iconTex = function(kind, color, enemy) {
     var g = c.getContext('2d');
     g.translate(32, 32); if (enemy) { g.rotate(Math.PI); } g.translate(-32, -32);
     g.fillStyle = color; g.strokeStyle = '#14181c'; g.lineWidth = 5; g.lineJoin = 'round';
+    var OPM = { opSea: 'sea', opSub: 'sub', opAir: 'air', opLand: 'land' }, crewed = !!OPM[kind] || kind === 'mother'; if (OPM[kind]) { kind = OPM[kind]; }
     g.beginPath();
     if (kind === 'unknown') { g.setTransform(1, 0, 0, 1, 0, 0); g.arc(32, 32, 20, 0, Math.PI * 2); }
     else if (kind === 'sea' || kind === 'escort') { g.moveTo(32, 6); g.lineTo(43, 24); g.lineTo(43, 56); g.lineTo(21, 56); g.lineTo(21, 24); }
@@ -1133,18 +1444,21 @@ View3D.prototype.iconTex = function(kind, color, enemy) {
     g.fillStyle = enemy ? '#14181c' : '#ffffff';
     if (kind === 'unknown') { g.fillStyle = '#14181c'; g.font = '700 28px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', 32, 34); }
     if (kind === 'bship') { g.beginPath(); g.arc(32, 26, 6, 0, 6.3); g.arc(32, 44, 6, 0, 6.3); g.fill(); }
-    if (kind === 'mother') { g.fillRect(24, 22, 5, 5); g.fillRect(35, 22, 5, 5); g.fillRect(24, 32, 5, 5); g.fillRect(35, 32, 5, 5); g.fillRect(24, 42, 5, 5); g.fillRect(35, 42, 5, 5); }
+    if (kind === 'motherX') { g.fillRect(24, 22, 5, 5); g.fillRect(35, 22, 5, 5); g.fillRect(24, 32, 5, 5); g.fillRect(35, 32, 5, 5); g.fillRect(24, 42, 5, 5); g.fillRect(35, 42, 5, 5); }
     if (kind === 'seaC' || kind === 'airC' || kind === 'landC') { g.fillRect(26, 26, 5, 5); g.fillRect(34, 26, 5, 5); g.fillRect(26, 36, 5, 5); g.fillRect(34, 36, 5, 5); }
     if (kind === 'lst') { g.fillStyle = '#f5c518'; g.fillRect(18, 12, 28, 6); }
     if (kind === 'lhd') { g.fillStyle = '#f5c518'; g.fillRect(18, 12, 28, 6); g.fillRect(18, 22, 28, 6); g.fillRect(18, 32, 28, 6); }
     if (kind === 'jammer') { g.beginPath(); g.arc(32, 36, 9, 0, Math.PI * 2); g.lineWidth = 3; g.stroke(); }
     if (kind === 'land' || kind === 'landC') { g.fillStyle = '#14181c'; g.fillRect(7, 12, 6, 40); g.fillRect(51, 12, 6, 40); }
+    //  Crewed: a little bunny head in the middle.
+    if (crewed && !enemy) { g.fillStyle = '#14181c'; g.beginPath(); g.arc(32, 38, 6.5, 0, 6.3); g.fill(); g.fillRect(26.5, 22, 4, 13); g.fillRect(33.5, 22, 4, 13); }
     var t = new THREE.CanvasTexture(c);
     this.texCache[key] = t;
     return t;
 };
-var ICON_PX = { mother: 36, bship: 30, sea: 17, airC: 30, air: 17, landC: 26, land: 16, sub: 15, uav: 15, escort: 18, jammer: 26, lst: 26, lhd: 38, unknown: 15 };
-var MODEL_LEN = { mother: 180, bship: 104, sea: 30, airC: 118, air: 30, landC: 50, land: 26, sub: 36, uav: 30, escort: 46, jammer: 70, lst: 96, lhd: 160 };
+var CREW_SEAT = { mother: [0.62, 0.1], opSea: [0.8, 0], opSub: [1.0, 0.1], opAir: [0.75, 0.2], opLand: [0.95, 0.1] };
+var ICON_PX = { opSea: 22, opSub: 20, opAir: 22, opLand: 22, mother: 36, bship: 30, sea: 17, airC: 30, air: 17, landC: 26, land: 16, sub: 15, uav: 15, escort: 18, jammer: 26, lst: 26, lhd: 38, unknown: 15 };
+var MODEL_LEN = { opSea: 52, opSub: 62, opAir: 60, opLand: 50, mother: 180, bship: 104, sea: 30, airC: 118, air: 30, landC: 50, land: 26, sub: 36, uav: 30, escort: 46, jammer: 70, lst: 96, lhd: 160 };
 
 /* ---- Role modules: the part of a model that shows what it is for and how it is fitted. ---- */
 View3D.prototype.module = function(role, fit, s) {
@@ -1181,6 +1495,11 @@ View3D.prototype.wake = function(g, len, wid, back) {
 /* ---- Your six pieces. Grey hull = yours; a coloured stripe and module show the role; a peg light shows the stance. ---- */
 View3D.prototype.unitModel = function(o) {
     var g = KIT.build(o.cls, o.role);
+    if (CLASSES[o.cls].crew) {
+        g.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(g), bn = this.bunny(o.seed || o.id, o.cls === 'mother' ? 'officer' : 'operator'), bs = o.cls === 'mother' ? 2.2 : 1.25, P = CREW_SEAT[o.cls];
+        bn.scale.multiplyScalar(bs); bn.position.set(0, bb.max.y * P[0] - 5 * bs, bb.max.z * P[1]); g.add(bn);
+    }
     if (o.dom === 'sea') { this.wake(g, CLASSES[o.cls].big ? 190 : 60, CLASSES[o.cls].big ? 34 : 12, CLASSES[o.cls].big ? -70 : -12); }
     return g;
 };
@@ -1275,6 +1594,7 @@ View3D.prototype.sync = function(units, enemies, ui) {
     for (i = 0; i < this.labels.length; i++) { var lu = cp.distanceTo(this.labels[i].position) * pxWorld * this.ui; this.labels[i].scale.set(112 * lu, 28 * lu, 1); }
     for (i = 0; i < units.length; i++) { place(units[i]); }
     this.syncYard(units, t);
+    if (ui.sim) { this.syncBase(ui.sim, t); }
     for (i = 0; i < enemies.length; i++) { place(enemies[i]); }
     for (var id in this.ents) { if (this.ents[id].f !== this.frame) { this.scene.remove(this.ents[id].g); delete this.ents[id]; } }
 
@@ -1770,8 +2090,8 @@ DESIGNS.splice(2, 0, ['SURFACE DRONE', 'Picket launch', 'A little riveted steam 
 })();
 
 
-    var NAMES = { mother: 'MOTHERSHIP', bship: 'BATTLESHIP', sub: 'SUB DRONE', sea: 'SURFACE DRONE', airC: 'AIR CARRIER', air: 'AIR DRONE', landC: 'LAUNCH TRUCK', land: 'BEACH CRAWLER' };
-    var SCALE = { air: 1.5, sub: 0.9, sea: 1.0 }, roleMats = {}, baseR = R, baseREDP = REDP;
+    var NAMES = { opSea: 'BATTLESHIP', opSub: 'SUB DRONE', opAir: 'AIR CARRIER', opLand: 'LAUNCH TRUCK', mother: 'MOTHERSHIP', bship: 'BATTLESHIP', sub: 'SUB DRONE', sea: 'SURFACE DRONE', airC: 'AIR CARRIER', air: 'AIR DRONE', landC: 'LAUNCH TRUCK', land: 'BEACH CRAWLER' };
+    var SCALE = { air: 1.5, sub: 0.9, sea: 1.0, opSea: 0.5, opSub: 1.7, opAir: 0.5, opLand: 0.9 }, roleMats = {}, baseR = R, baseREDP = REDP;
     function build(cls, role) {
         //  Everything drawn in the role colour: the builders read R and REDP when they run.
         if (!roleMats[role]) { var col = ROLES[role].color; roleMats[role] = [toon(new T.Color(col).getHex()), plated(col)]; }
@@ -1893,36 +2213,53 @@ function drawGoal(landed) {
     var h = '<div class="cap">ASHORE</div><div class="big" style="color:' + (landed >= LAND_LIMIT - 3 ? 'var(--red)' : '#fff') + '">' + landed + '<small>/' + LAND_LIMIT + '</small></div><div class="pips">';
     for (var i = 0; i < LAND_LIMIT; i++) { h += '<span class="pip' + (i < landed ? ' on' : '') + '"></span>'; }
     h += '</div>';
-    if ($('goal')._h !== h) { $('goal')._h = h; $('goal').innerHTML = h; }
+    setHtml('goal', h);
 }
 //  Only touch the page when something changed, so a finger already on a button is never interrupted.
 function setHtml(id, h) { var el = $(id); if (el._h !== h) { el._h = h; el.innerHTML = h; } }
-var SHORT = { mother: 'Mothership', sub: 'Sub', sea: 'Surface', air: 'Air', land: 'Crawler' };
+SIL.opSea = SIL.bship; SIL.opSub = SIL.sub; SIL.opAir = SIL.airC; SIL.opLand = SIL.landC;
+var SHORT = { mother: 'Mothership', sub: 'Sub', sea: 'Surface', air: 'Air', land: 'Crawler', opSea: 'Boat', opSub: 'Sub', opAir: 'Plane', opLand: 'Truck' };
 var UI_IC = {
     pause: '<path d="M8 5v14M16 5v14"/>', play: '<path d="M7 4l13 8-13 8z"/>', next: '<path d="M4 5l10 7-10 7zM18 5v14"/>',
-    home: '<path d="M3 11l9-8 9 8M6 10v10h12V10"/>', sea: '<path d="M2 9c3-3 5 3 8 0s5 3 8 0 3 1 4 0M2 16c3-3 5 3 8 0s5 3 8 0 3 1 4 0"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>'
+    home: '<path d="M3 11l9-8 9 8M6 10v10h12V10"/>', sea: '<path d="M2 9c3-3 5 3 8 0s5 3 8 0 3 1 4 0M2 16c3-3 5 3 8 0s5 3 8 0 3 1 4 0"/>', x: '<path d="M6 6l12 12M18 6L6 18"/>',
+    factory: '<path d="M3 21V10l6 4v-4l6 4V5h4v16z"/><path d="M7 17h2M12 17h2"/>', camp: '<path d="M3 20L12 5l9 15z"/><path d="M12 5V2l4 1.5-4 1.5M10 20l2-4 2 4"/>',
+    academy: '<path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c2 2 10 2 12 0v-5M22 9v6"/>', lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+    up: '<path d="M12 19V6M6 12l6-6 6 6"/>'
 };
+//  A bunny's face for the panels, drawn from the same numbers as its 3D model.
+function face(b) {
+    var L = bunnyLook(b.seed), k = '#22262e', ears = L.lop
+        ? '<ellipse cx="4.5" cy="15" rx="2.3" ry="5" transform="rotate(20 4.5 15)" fill="' + L.fur + '" stroke="' + k + '"/><ellipse cx="19.5" cy="15" rx="2.3" ry="5" transform="rotate(-20 19.5 15)" fill="' + L.fur + '" stroke="' + k + '"/>'
+        : '<ellipse cx="8.5" cy="6" rx="2.2" ry="5.5" transform="rotate(' + (-L.earTilt * 30) + ' 8.5 10)" fill="' + L.fur + '" stroke="' + k + '"/><ellipse cx="15.5" cy="6" rx="2.2" ry="5.5" transform="rotate(' + (L.earTilt * 30) + ' 15.5 10)" fill="' + L.fur + '" stroke="' + k + '"/>';
+    var hat = b.rank === 'officer' ? '<path d="M6 10.5c2-3.5 10-3.5 12 0z" fill="#1f3a6b" stroke="' + k + '"/><circle cx="12" cy="9.3" r="0.9" fill="#e8c04a"/>' : '<path d="M7 10c1.5-2.4 8.5-2.4 10 0z" fill="#fff" stroke="' + k + '"/>';
+    return '<svg class="face" viewBox="0 0 24 24" stroke-width="1">' + ears + '<circle cx="12" cy="15.5" r="7" fill="' + L.fur + '" stroke="' + k + '"/>' + hat +
+        '<circle cx="9.4" cy="15" r="1.1" fill="' + k + '"/><circle cx="14.6" cy="15" r="1.1" fill="' + k + '"/><circle cx="12" cy="17.6" r="0.8" fill="#ff7fa0"/>' +
+        (L.cheeks ? '<circle cx="7.3" cy="17.6" r="1.1" fill="#ffb3c6"/><circle cx="16.7" cy="17.6" r="1.1" fill="#ffb3c6"/>' : '') + '</svg>';
+}
+function who(b) { return (b.rank === 'officer' ? 'Officer ' : 'Operator ') + b.name; }
 
 /* ------------------------------------------------------------------
     Welcome
    ------------------------------------------------------------------ */
+var BASE_VIEW = [0.4, BASE.x + 45, -120];
 function WelcomeState() {}
 WelcomeState.prototype.enter = function(game) {
     $('hud').classList.add('hidden'); $('replaybar').classList.add('hidden');
     var h = '<h1>Strait Crossing</h1><div class="tag">FUTURE OF WARFARE &middot; SYSTEM OF AUTONOMOUS SYSTEMS</div>';
-    h += '<p>An invasion fleet is crossing the strait in five waves. You run the drone yard on the coast. <b style="color:#fff">Keep fewer than ' + LAND_LIMIT + ' landing ships off the beach.</b></p>';
+    h += '<p>An invasion fleet is crossing the strait in five waves. You run the bunny navy&rsquo;s drone base. <b style="color:#fff">Keep fewer than ' + LAND_LIMIT + ' landing ships off the beach.</b></p>';
     h += '<div class="cols">';
-    h += '<div class="box"><h2>1 &middot; BUILD</h2><div class="txt">Tap a button in the dock. The drone rolls out of the factory. Hold the button to change what it is for.</div></div>';
-    h += '<div class="box"><h2>2 &middot; LOAD</h2><div class="txt">Drag drones onto the mothership at the pier. The dock crew carries them aboard: six to a ship.</div></div>';
-    h += '<div class="box"><h2>3 &middot; SEND</h2><div class="txt">Tap the mothership, pick <b style="color:#3aa0ff">DEFEND</b>, <b style="color:#ffd23a">SCREEN</b> or <b style="color:#ff8a1e">ATTACK</b>, then tap the sea. Its drones do the rest.</div></div>';
-    h += '<div class="box"><h2>4 &middot; RAID</h2><div class="txt">Sail an ATTACK mothership all the way across and its drones hit the ports: the next wave comes with fewer landing ships.</div></div>';
+    h += '<div class="box"><h2>1 &middot; BUILD</h2><div class="txt">The <b>Factory</b> builds any drone you queue. It costs money and takes time. Finished drones wait in the yard.</div></div>';
+    h += '<div class="box"><h2>2 &middot; TRAIN</h2><div class="txt">The <b>Boot Camp</b> trains operators. Each drives a boat, sub, plane or truck with loyal wingman drones.</div></div>';
+    h += '<div class="box"><h2>3 &middot; COMMAND</h2><div class="txt">The <b>Academy</b> trains officers. An officer&rsquo;s mothership carries operators beyond your link and runs them on <b style="color:#3aa0ff">DEFEND</b>, <b style="color:#ffd23a">SCREEN</b> or <b style="color:#ff8a1e">ATTACK</b>.</div></div>';
+    h += '<div class="box"><h2>4 &middot; GROW</h2><div class="txt">Money comes in all the time. Unlock and upgrade buildings to build faster, hold more and fly bigger flights.</div></div>';
     h += '</div>';
-    h += '<button class="btn go xl" id="startBtn">TAKE COMMAND</button><div class="tiny">Pinch to zoom &middot; drag to look around &middot; outside the blue link ring your machines think for themselves</div>';
+    h += '<button class="btn go xl" id="startBtn">TAKE COMMAND</button><div class="tiny">Pinch to zoom &middot; drag to look around &middot; tap a building or a ship</div>';
     showOverlay(h);
     $('startBtn').onclick = function() { game.moveToState(new PlayState()); };
-    if (game.view) { game.view.goTo(0.3, BASE.x + 20, -95); game.view.setWeather('clear'); game.view.sync([], [], { weather: 'clear' }); }
+    if (game.view) { game.view.goTo(BASE_VIEW[0], BASE_VIEW[1], BASE_VIEW[2]); game.view.setWeather('clear'); }
+    this.demo = new Sim();
 };
-WelcomeState.prototype.update = function(game, dt) { this.t = (this.t || 0) + dt; if (game.view) { game.view.setDay(0.04); game.view.sync([], [], { weather: 'clear', time: this.t, dt: dt }); } };
+WelcomeState.prototype.update = function(game, dt) { this.t = (this.t || 0) + dt; if (game.view) { game.view.setDay(0.04); game.view.sync([], [], { weather: 'clear', time: this.t, dt: dt, sim: this.demo }); } };
 
 /* ------------------------------------------------------------------
     Play: the crossing, live.
@@ -1930,26 +2267,26 @@ WelcomeState.prototype.update = function(game, dt) { this.t = (this.t || 0) + dt
 function PlayState() {
     this.speed = 1; this.paused = false;
     this.sel = null;            //  selected unit (yours) or contact (theirs)
-    this.drag = null;           //  a dock button or one of your pieces being dragged
-    this.rolesFor = null;       //  class whose role picker is open
-    this.dockPress = false;
+    this.panel = null;          //  building whose panel is open
+    this.board = true;          //  new flights board the docked mothership
+    this.drag = null;
     this.logLines = [];
     this.hudT = 0;
 }
 PlayState.prototype.enter = function(game) {
     game.sim = new Sim();
     hideOverlay(); $('hud').classList.remove('hidden'); $('replaybar').classList.add('hidden'); document.body.classList.remove('replay');
-    if (game.view) { game.view.clearFx(); game.view.goTo(0.3, BASE.x + 20, -95); }
+    if (game.view) { game.view.clearFx(); game.view.goTo(BASE_VIEW[0], BASE_VIEW[1], BASE_VIEW[2]); }
     var self = this;
     $('hud').onclick = function(e) {
         var el = e.target;
         while (el && el !== this && !(el.getAttribute && el.getAttribute('data-act'))) { el = el.parentNode; }
         if (el && el !== this) { self.act(game, el.getAttribute('data-act'), el.getAttribute('data-a'), el.getAttribute('data-b')); e.stopPropagation(); }
     };
-    this.banner('DAY 1', 'First wave in ' + mmss(PHASES[0].prep) + '. Build a mothership and load it.');
+    this.banner('DAY 1', 'First wave in ' + mmss(PHASES[0].prep) + '. Get the base running.');
     this.renderAll(game);
 };
-PlayState.prototype.leave = function() { $('hud').classList.add('hidden'); $('hud').onclick = null; $('roles').classList.add('hidden'); $('dragghost').classList.add('hidden'); };
+PlayState.prototype.leave = function() { $('hud').classList.add('hidden'); $('hud').onclick = null; };
 
 PlayState.prototype.say = function(text, cls) {
     this.logLines.push({ text: text, cls: cls || '', t: 6 });
@@ -1961,162 +2298,184 @@ PlayState.prototype.banner = function(title, text) {
 };
 
 PlayState.prototype.act = function(game, act, a, b) {
-    var sim = game.sim, o = this.sel;
-    if (act === 'strat') { if (o && o.cls === 'mother') { if (!sim.setStrategy(o, a)) { this.say('Out of link: it keeps its last strategy.', 'bad'); } } }
+    var sim = game.sim, o = this.sel, v = game.view, u;
+    if (act === 'panel') {
+        this.panel = this.panel === a ? null : a; this.sel = null;
+        var s = v && v.toScreen({ x: BUILDINGS[a].x, z: BUILDINGS[a].z, dom: 'land' });
+        if (v && this.panel && (s.behind || s.x < 0 || s.x > v.w || s.y < 0 || s.y > v.h)) { v.goTo(BASE_VIEW[0], BASE_VIEW[1], BASE_VIEW[2]); }
+    }
+    else if (act === 'closep') { this.panel = null; }
+    else if (act === 'up') { sim.upgrade(a); }
+    else if (act === 'q') { sim.queueDrone(a); }
+    else if (act === 'cyc') { var t = sim.templates[a]; sim.templates[a] = makeTpl(a, ROLE_ORDER[(ROLE_ORDER.indexOf(t.role) + 1) % ROLE_ORDER.length]); }
+    else if (act === 'train') { sim.train(a); }
+    else if (act === 'board') { this.board = !this.board; }
+    else if (act === 'launch') { u = sim.launchFlight(a, this.board); if (u && u.cls !== 'mother') { this.sel = u; this.panel = null; this.say(who(u.crew) + ' is ready. Tap the sea to send the flight.', 'ok'); } }
+    else if (act === 'commission') { u = sim.commission(); if (u) { this.say('Now open the Boot Camp and send flights aboard.', 'ok'); } }
+    else if (act === 'strat') { if (o && !o.side) { if (!sim.setStrategy(o, a)) { this.say('No orders possible: ' + o.why + '.', 'bad'); } } }
     else if (act === 'home') { if (o && !sim.order(o, BERTH.x, BERTH.z)) { this.say('Cannot call it home: ' + o.why + '.', 'bad'); } }
     else if (act === 'recall') { if (o && !o.side && !sim.recall(o)) { this.say('Cannot recall: ' + o.why + '.', 'bad'); } }
     else if (act === 'desel') { this.sel = null; }
-    else if (act === 'role') { sim.templates[a] = makeTpl(a, b); this.rolesFor = null; this.say(CLASSES[a].name + 's are now built for ' + ROLES[b].name + '.', 'ok'); }
-    else if (act === 'closeroles') { this.rolesFor = null; }
     else if (act === 'send') { sim.sendNow(); }
     else if (act === 'pause') { this.paused = !this.paused; }
     else if (act === 'speed') { this.speed = this.speed === 1 ? 2 : this.speed === 2 ? 4 : 1; }
-    else if (act === 'view') { if (game.view) { if (a === 'base') { game.view.goTo(0.3, BASE.x + 20, -95); } else { game.view.goTo(1, 0, 2300); } } }
+    else if (act === 'view') { if (v) { if (a === 'base') { v.goTo(BASE_VIEW[0], BASE_VIEW[1], BASE_VIEW[2]); } else { v.goTo(1, 0, 2300); } } }
     else if (act === 'quit') { sim.finish('lose', 'You stood the defence down.'); }
     this.renderAll(game);
 };
 
-/* ---- The dock: five big buttons. Tap builds, hold picks the role, drag sends or loads. ---- */
-PlayState.prototype.loadTarget = function(game, cls) {
-    var dm = game.sim.dockedMother();
-    return (dm && cls !== 'mother' && CLASSES.mother.cargoOf.indexOf(cls) >= 0 && dm.cargoList.length + dm.loading.length < CLASSES.mother.cargoN) ? dm : null;
-};
+/* ---- The dock: one big button per building. ---- */
 PlayState.prototype.renderDock = function(game) {
-    if (this.dockPress) { return; }
-    var sim = game.sim, h = '', i, dm = sim.dockedMother();
-    for (i = 0; i < CLASS_ORDER.length; i++) {
-        var cls = CLASS_ORDER[i], t = sim.templates[cls], cost = unitCost(cls, sim.templates), col = cls === 'mother' ? '#e8edf0' : ROLES[t.role].color;
-        var toShip = this.sel && this.sel === dm && this.loadTarget(game, cls), blocked = cls === 'mother' && dm;
-        h += '<div class="dk' + (cost > sim.credits || blocked ? ' poor' : '') + '" data-cls="' + cls + '" style="--c:' + col + '">' +
-            '<div class="sil">' + svg(SIL[cls], 1) + '</div>' + (cls === 'mother' ? '' : '<div class="rb">' + svg(IC[t.role]) + '</div>') +
-            '<div class="nm">' + SHORT[cls] + '</div><div class="cost">$' + cost + '</div>' + (toShip ? '<div class="tag">LOAD</div>' : '') + '</div>';
+    var sim = game.sim, h = '', i;
+    for (i = 0; i < BUILDING_ORDER.length; i++) {
+        var key = BUILDING_ORDER[i], b = sim.base[key], B = BUILDINGS[key], n = key === 'factory' ? b.queue.length : b.ready.length, busy = b.queue && b.queue.length;
+        h += '<div class="dk' + (this.panel === key ? ' on' : '') + (b.lv ? '' : ' locked') + '" data-act="panel" data-a="' + key + '" style="--c:' + (key === 'factory' ? '#ff8a1e' : key === 'camp' ? '#58d68d' : '#6aa8ff') + '">' +
+            '<div class="sil">' + svg(UI_IC[key]) + '</div><div class="nm">' + B.name.replace('Drone ', '') + '</div>' +
+            '<div class="cost">' + (b.lv ? 'LV ' + b.lv : svg(UI_IC.lock) + '$' + B.unlock) + '</div>' +
+            (n ? '<div class="tag">' + n + (key === 'factory' ? ' building' : ' ready') + '</div>' : busy ? '<div class="tag dimtag">training</div>' : '') + '</div>';
     }
+    h += '<div class="yardchip"><div class="cap">YARD</div><b>' + sim.stock.length + '</b>/' + yardCap(sim.base.yard.lv) + '</div>';
     setHtml('dock', h);
 };
-PlayState.prototype.renderRoles = function(game) {
-    var el = $('roles'), cls = this.rolesFor;
-    if (!cls) { el.classList.add('hidden'); return; }
+function upBtn(sim, key) {
+    var b = sim.base[key], c = sim.upgradeCost(key);
+    if (b.lv >= MAX_LV) { return '<span class="chip">MAX</span>'; }
+    return '<span class="btn up' + (c > sim.credits ? ' poor' : '') + '" data-act="up" data-a="' + key + '">' + svg(UI_IC.up) + (b.lv ? 'LV ' + (b.lv + 1) : 'OPEN') + ' $' + c + '</span>';
+}
+function progBar(id) { return '<span class="pgw"><i class="pg" data-pg="' + id + '"></i></span>'; }
+PlayState.prototype.panelHtml = function(game) {
+    var sim = game.sim, key = this.panel, b = sim.base[key], B = BUILDINGS[key], i, h, x = '<span class="x" data-act="closep">' + svg(UI_IC.x) + '</span>';
+    h = '<div class="hd"><b>' + B.name.toUpperCase() + '</b>' + (b.lv ? '<span class="chip">LV ' + b.lv + '</span>' : '') + upBtn(sim, key) + x + '</div>';
+    if (!b.lv) { return h + '<div class="says">' + B.does + '</div><div class="says warn">Locked. Open it for $' + B.unlock + '.</div>'; }
+    if (key === 'factory') {
+        h += '<div class="tiles">';
+        for (i = 0; i < DRONE_ORDER.length; i++) {
+            var cls = DRONE_ORDER[i], t = sim.templates[cls], cost = smallCost(cls, t), col = ROLES[t.role].color;
+            h += '<div class="tl" style="--c:' + col + '"><div class="mk' + (cost > sim.credits ? ' poor' : '') + '" data-act="q" data-a="' + cls + '">' + svg(SIL[cls], 1) + '<b>' + SHORT[cls] + '</b><span class="cost">$' + cost + '</span></div>' +
+                '<div class="rc" data-act="cyc" data-a="' + cls + '">' + svg(IC[t.role]) + ROLES[t.role].name + '</div></div>';
+        }
+        h += '</div><div class="says">Tap a drone to build it. Tap the coloured strip under it to change what it is for.</div>';
+        h += '<div class="rowl"><span class="cap">BUILDING</span>';
+        for (i = 0; i < b.queue.length; i++) { h += '<span class="slot sm" style="--c:' + ROLES[b.queue[i].tpl.role].color + '">' + svg(SIL[b.queue[i].cls], 1) + '</span>'; }
+        h += (b.queue.length ? progBar('factory') : '<span class="dim">nothing queued</span>') + '</div>';
+        h += '<div class="rowl"><span class="cap">YARD ' + sim.stock.length + '/' + yardCap(sim.base.yard.lv) + '</span>';
+        for (i = 0; i < DRONE_ORDER.length; i++) { var n = sim.stockOf(DRONE_ORDER[i]); if (n) { h += '<span class="cnt">' + svg(SIL[DRONE_ORDER[i]], 1) + n + '</span>'; } }
+        h += '<span style="margin-left:auto">' + upBtn(sim, 'yard').replace('LV', 'YARD LV') + '</span></div>';
+        if (sim.stock.length >= yardCap(sim.base.yard.lv)) { h += '<div class="says warn">The yard is full. Launch a flight or upgrade the yard.</div>'; }
+        return h;
+    }
+    var kind = key === 'camp' ? 'operator' : 'officer', T = TRAIN[kind];
+    h += '<div class="rowl"><span class="btn go' + (T.cost > sim.credits ? ' poor' : '') + '" data-act="train" data-a="' + kind + '">TRAIN ' + kind.toUpperCase() + ' $' + T.cost + '</span>';
+    for (i = 0; i < b.queue.length; i++) { h += '<span class="fc ld">' + face(b.queue[i].bunny) + '</span>'; }
+    h += (b.queue.length ? progBar(key) : '') + '</div>';
+    h += '<div class="rowl"><span class="cap">READY</span>';
+    for (i = 0; i < b.ready.length; i++) { h += '<span class="fc">' + face(b.ready[i]) + '<em>' + b.ready[i].name + '</em></span>'; }
+    h += (b.ready.length ? '' : '<span class="dim">nobody yet</span>') + '</div>';
+    if (key === 'camp') {
+        var dm = sim.dockedMother(), size = wingSize(b.lv);
+        h += '<div class="cap" style="margin-top:6px">LAUNCH A FLIGHT &mdash; operator + up to ' + size + ' wingmen</div><div class="tiles">';
+        for (i = 0; i < CRAFT_ORDER.length; i++) {
+            var cr = CRAFT_ORDER[i], have = sim.stockOf(CLASSES[cr].wing), ok = b.ready.length && have;
+            h += '<div class="tl" style="--c:#f4f1e6"><div class="mk' + (ok ? '' : ' poor') + '" data-act="launch" data-a="' + cr + '">' + svg(SIL[cr], 1) + '<b>' + SHORT[cr] + '</b><span class="cost">' + Math.min(have, size) + '/' + size + ' ' + svg(SIL[CLASSES[cr].wing], 1) + '</span></div></div>';
+        }
+        h += '</div>';
+        if (sim.freeBay(dm)) { h += '<div class="rowl"><span class="btn' + (this.board ? ' go' : '') + '" data-act="board">' + (this.board ? 'BOARDING THE MOTHERSHIP' : 'GOING OUT ALONE') + '</span><span class="dim">tap to switch</span></div>'; }
+        else { h += '<div class="says">Flights go out alone and need your home link. An officer&rsquo;s mothership at the pier can carry them further.</div>'; }
+    } else {
+        var can = b.ready.length && !sim.dockedMother();
+        h += '<div class="rowl"><span class="btn' + (can ? ' go' : ' poor') + '" data-act="commission">COMMISSION MOTHERSHIP $' + MOTHER_COST + '</span><span class="dim">' + motherBays(b.lv) + ' flights each</span></div>';
+        h += '<div class="says">' + (sim.dockedMother() ? 'A mothership is at the pier. Send it out to free the berth.' : B.does) + '</div>';
+    }
+    return h;
+};
+function flightChip(f, wingsN, col) {
+    return '<span class="fl">' + face(f.bunny) + '<span class="flb"><em>' + f.bunny.name + '</em><span>' + svg(SIL[f.craft], 1) + wingsN + '/' + f.size + '</span></span></span>';
+}
+PlayState.prototype.selHtml = function(game) {
+    var o = this.sel, sim = game.sim, h, i, close = '<span class="x" data-act="desel">' + svg(UI_IC.x) + '</span>';
+    if (o.side) {
+        var T = ETYPES[o.et];
+        return o.det === 2 ? '<div class="hd"><b class="bad">' + T.name.toUpperCase() + '</b><span class="dim">hull ' + Math.ceil(o.hp) + '/' + o.maxHp + '</span>' + close + '</div>' + (T.lands ? '<div class="says bad">Counts ' + T.lands + ' if it reaches the beach.</div>' : '')
+                           : '<div class="hd"><b>UNKNOWN CONTACT</b>' + close + '</div><div class="says">Not identified yet. Get something closer to it.</div>';
+    }
+    var can = sim.canCommand(o), hull = '<span class="dim">hull ' + Math.max(0, Math.ceil(o.hp)) + '/' + o.maxHp + '</span>';
+    function seg() {
+        var s = '<div class="seg' + (can ? '' : ' off') + '">';
+        for (var k = 0; k < STRATEGY_ORDER.length; k++) { var sk = STRATEGY_ORDER[k], S = STRATEGIES[sk]; s += '<div class="sg' + (o.strategy === sk ? ' on' : '') + '" style="--c:' + S.color + '" data-act="strat" data-a="' + sk + '">' + S.name + '</div>'; }
+        return s + '</div><div class="says">' + STRATEGIES[o.strategy].does + '</div>';
+    }
+    if (o.cls === 'mother') {
+        h = '<div class="hd">' + face(o.crew) + '<b>' + who(o.crew).toUpperCase() + '</b>' + hull + close + '</div><div class="rowl">';
+        var bays = motherBays(sim.base.academy.lv), n = 0;
+        for (i = 0; i < o.cargoList.length; i++) { h += flightChip(o.cargoList[i], o.cargoList[i].wings.length); n++; }
+        for (i = 0; i < o.loading.length; i++) { h += '<span class="ldw">' + flightChip(o.loading[i].flight, o.loading[i].flight.wings.length) + '</span>'; n++; }
+        for (i = 0; i < sim.units.length; i++) { var k = sim.units[i]; if (k.boss === o) { h += flightChip({ bunny: k.crew, craft: k.cls, size: k.wingMax }, sim.wingsOf(k).length); n++; } }
+        for (i = n; i < bays; i++) { h += '<span class="fl empty">EMPTY BAY</span>'; }
+        h += '</div>' + seg();
+        h += '<div class="row"><span class="' + (can ? 'ok' : 'bad') + '">' + (o.docked ? 'AT THE PIER &mdash; tap the sea to sail' : o.toPier ? 'COMING HOME to reload' : can ? 'OFFICER ABOARD &mdash; tap the sea to move' : o.why) + '</span>' +
+            (o.docked ? '' : '<span class="btn" data-act="home"' + (can ? '' : ' disabled') + '>HOME</span>') + '</div>';
+        return h;
+    }
+    if (o.crew) {
+        var wings = sim.wingsOf(o);
+        h = '<div class="hd">' + face(o.crew) + '<b>' + who(o.crew).toUpperCase() + '</b><span class="dim">' + CLASSES[o.cls].name + '</span>' + hull + close + '</div><div class="rowl"><span class="cap">WINGMEN</span>';
+        for (i = 0; i < o.wingMax; i++) { h += wings[i] ? '<span class="slot sm" style="--c:' + ROLES[wings[i].role].color + '">' + svg(SIL[wings[i].cls], 1) + '</span>' : '<span class="slot sm empty"></span>'; }
+        h += '</div>';
+        if (o.boss) { return h + '<div class="says">Takes orders from ' + who(o.boss.crew) + ' aboard the mothership: <b style="color:' + STRATEGIES[o.strategy].color + '">' + STRATEGIES[o.strategy].name + '</b>. Select the mothership to change them.</div>'; }
+        h += seg() + '<div class="says dim">' + o.doing + '</div>';
+        h += '<div class="row"><span class="' + (can ? 'ok' : 'bad') + '">' + (can ? 'IN LINK &mdash; tap the sea to send the flight' : o.why + ' &mdash; on its own') + '</span><span class="btn" data-act="recall"' + (can ? '' : ' disabled') + '>RECALL</span></div>';
+        return h;
+    }
+    var col = ROLES[o.role].color;
+    return '<div class="hd"><b>' + CLASSES[o.cls].name.toUpperCase() + '</b><span class="chip" style="border-color:' + col + ';color:' + col + '">' + ROLES[o.role].name + '</span>' + hull + close + '</div><div class="says">' + o.doing + '</div><div class="row"><span class="bad">' + o.why + '</span></div>';
+};
+PlayState.prototype.renderPanel = function(game) {
+    var el = $('selp'), sim = game.sim, i;
+    if (this.sel && this.sel.dead) { this.sel = null; }
+    if (!this.panel && !this.sel) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
-    var t = game.sim.templates[cls], h = '<div class="hd"><b>' + CLASSES[cls].name.toUpperCase() + '</b> &mdash; what is it for?<span class="x" data-act="closeroles">' + svg(UI_IC.x) + '</span></div><div class="rl">';
-    for (var i = 0; i < ROLE_ORDER.length; i++) {
-        var r = ROLE_ORDER[i];
-        h += '<div class="rbtn' + (t.role === r ? ' on' : '') + '" style="--c:' + ROLES[r].color + '" data-act="role" data-a="' + cls + '" data-b="' + r + '">' + svg(IC[r]) + '<b>' + ROLES[r].name + '</b></div>';
-    }
-    h += '</div><div class="says">' + ROLES[t.role].does + '</div>';
-    setHtml('roles', h);
+    setHtml('selp', this.panel ? this.panelHtml(game) : this.selHtml(game));
+    //  Progress bars are moved without redrawing the panel.
+    var bars = el.querySelectorAll('[data-pg]');
+    for (i = 0; i < bars.length; i++) { var q = sim.base[bars[i].getAttribute('data-pg')].queue[0]; bars[i].style.width = (q ? Math.round(100 * (1 - q.t / q.t0)) : 0) + '%'; }
 };
-PlayState.prototype.tapDock = function(game, cls) {
-    var sim = game.sim, v = game.view, dm = sim.dockedMother(), u;
-    this.rolesFor = null;
-    if (this.sel && this.sel === dm && this.loadTarget(game, cls)) { sim.load(dm, cls); this.renderAll(game); return; }
-    u = sim.buy(cls);
-    if (u) {
-        this.sel = u;
-        //  Bring the yard into view if it is off screen, so you see it come out.
-        var s = v && v.toScreen({ x: DOOR.x, z: DOOR.z, dom: 'land' });
-        if (v && (s.behind || s.x < 0 || s.x > v.w || s.y < 0 || s.y > v.h)) { v.goTo(0.3, BASE.x + 20, -95); }
-        this.say(cls === 'mother' ? 'Mothership at the pier. Drag drones onto it.' : CLASSES[cls].name + ' built. Tap the sea to send it, or drag it onto the mothership.', 'ok');
-    }
-    this.renderAll(game);
-};
-PlayState.prototype.openRoles = function(game, cls) {
-    if (cls === 'mother') { this.say(CLASSES.mother.blurb); return; }
-    this.rolesFor = cls; this.renderRoles(game);
-};
-//  Is the finger over the mothership at the pier?
-PlayState.prototype.overShip = function(game, px, py, cls) {
-    var dm = this.loadTarget(game, cls), v = game.view;
-    if (!dm || !v) { return null; }
-    var s = v.toScreen(dm), g = v.pick(px, py), near = Math.sqrt((s.x - px) * (s.x - px) + (s.y - py) * (s.y - py)) < 60;
-    return (near || (g && Math.abs(g.x - dm.x) < 60 && Math.abs(g.z - dm.z) < 120)) ? dm : null;
-};
-PlayState.prototype.dragDock = function(game, cls, px, py) {
-    var v = game.view, g = v ? v.pick(px, py) : null, ship = this.overShip(game, px, py, cls), gh = $('dragghost');
-    var overHud = py > window.innerHeight - 70 * (game.hudScale || 1) && px < 420 * (game.hudScale || 1);
-    this.drag = { kind: 'dock', cls: cls, g: (g && !ship && !overHud) ? game.sim.clampDest(cls, g.x, g.z) : null, ship: ship };
-    gh.classList.remove('hidden');
-    gh.style.left = px + 'px'; gh.style.top = py + 'px';
-    gh.style.setProperty('--c', cls === 'mother' ? '#e8edf0' : ROLES[game.sim.templates[cls].role].color);
-    setHtml('dragghost', svg(SIL[cls], 1) + '<span>' + (ship ? 'LOAD' : overHud || !g ? 'CANCEL' : 'SEND') + '</span>');
-};
-PlayState.prototype.dropDock = function(game, cls, px, py) {
-    var sim = game.sim, d = this.drag;
-    $('dragghost').classList.add('hidden'); this.drag = null;
-    if (!d) { return; }
-    if (d.ship) { sim.load(d.ship, cls); }
-    else if (d.g) {
-        var u = sim.buy(cls);
-        if (u) { if (cls === 'mother') { sim.order(u, d.g.x, d.g.z); } else { u.dest = d.g; } this.sel = u; }
-    }
-    this.renderAll(game);
-};
-
-/* ---- The small panels. ---- */
 PlayState.prototype.renderTop = function(game) {
     var sim = game.sim, p = sim.phase, next = p + 1, W = WEATHER[sim.weather], hr = 5.5 + sim.dayFrac() * 13.5, h;
     h = '<div class="cap">DAY ' + (sim.dayIndex + 1) + ' &middot; ' + Math.floor(hr) + ':' + (Math.floor((hr % 1) * 60) < 10 ? '0' : '') + Math.floor((hr % 1) * 60) + ' &middot; ' + W.name + '</div>';
     if (next < PHASES.length) { h += '<div class="ln">Wave ' + (next + 1) + ' of ' + PHASES.length + ' in <b class="warn">' + mmss(sim.nextWave - sim.time) + '</b></div><div class="sub">' + PHASES[next].name + '</div>'; }
     else { h += '<div class="ln">LAST WAVE</div><div class="sub">' + sim.enemies.length + ' contacts left</div>'; }
     setHtml('clock', h);
-    h = '<div class="money">$' + sim.credits + '</div>' +
-        '<div class="ib" data-act="pause">' + svg(this.paused ? UI_IC.play : UI_IC.pause) + '</div>' +
+    setHtml('money', '$' + sim.credits + '<small>+' + incomeRate(sim.base).toFixed(1) + '/s</small>');
+    h = '<div class="ib" data-act="pause">' + svg(this.paused ? UI_IC.play : UI_IC.pause) + '</div>' +
         '<div class="ib" data-act="speed"><b>' + this.speed + 'x</b></div>' +
         (next < PHASES.length ? '<div class="ib" data-act="send" title="Send the next wave now">' + svg(UI_IC.next) + '</div>' : '') +
         '<div class="ib" data-act="view" data-a="base">' + svg(UI_IC.home) + '</div>' +
         '<div class="ib" data-act="view" data-a="strait">' + svg(UI_IC.sea) + '</div>';
-    setHtml('ctrl', h);
+    setHtml('ctrlb', h);
 };
-PlayState.prototype.renderSel = function(game) {
-    var el = $('selp'), o = this.sel, sim = game.sim, h, i;
-    if (!o || o.dead) { this.sel = null; el.classList.add('hidden'); return; }
-    el.classList.remove('hidden');
-    var close = '<span class="x" data-act="desel">' + svg(UI_IC.x) + '</span>';
-    if (o.side) {
-        var T = ETYPES[o.et];
-        h = o.det === 2 ? '<div class="hd"><b class="bad">' + T.name.toUpperCase() + '</b><span class="dim">hull ' + Math.ceil(o.hp) + '/' + o.maxHp + '</span>' + close + '</div>' + (T.lands ? '<div class="says bad">Counts ' + T.lands + ' if it reaches the beach.</div>' : '')
-                        : '<div class="hd"><b>UNKNOWN CONTACT</b>' + close + '</div><div class="says">Not identified yet. Get something closer to it.</div>';
-        setHtml('selp', h); return;
-    }
-    var can = sim.canCommand(o), hull = '<span class="dim">hull ' + Math.max(0, Math.ceil(o.hp)) + '/' + o.maxHp + '</span>';
-    if (o.cls === 'mother') {
-        var out = 0; for (i = 0; i < sim.units.length; i++) { if (sim.units[i].leader === o) { out++; } }
-        h = '<div class="hd"><b>MOTHERSHIP</b>' + hull + close + '</div><div class="slots">';
-        for (i = 0; i < CLASSES.mother.cargoN; i++) {
-            var it = o.cargoList[i], ld = it ? null : o.loading[i - o.cargoList.length];
-            if (it || ld) { var k = it || ld; h += '<span class="slot' + (ld ? ' ld' : '') + '" style="--c:' + ROLES[k.tpl.role].color + '">' + svg(SIL[k.cls], 1) + '</span>'; }
-            else { h += '<span class="slot empty"></span>'; }
-        }
-        h += (out ? '<span class="dim" style="margin-left:6px">' + out + ' out</span>' : '') + '</div><div class="seg">';
-        for (i = 0; i < STRATEGY_ORDER.length; i++) { var sk = STRATEGY_ORDER[i], S = STRATEGIES[sk]; h += '<div class="sg' + (o.strategy === sk ? ' on' : '') + '" style="--c:' + S.color + '" data-act="strat" data-a="' + sk + '">' + S.name + '</div>'; }
-        h += '</div><div class="says">' + STRATEGIES[o.strategy].does + '</div>';
-        h += '<div class="row"><span class="' + (can ? 'ok' : 'bad') + '">' + (o.docked ? 'AT THE PIER &mdash; tap the sea to sail' : o.toPier ? 'COMING HOME to reload' : can ? 'IN LINK &mdash; tap the sea to move it' : o.why + ' &mdash; on its own') + '</span>' +
-            (o.docked ? '' : '<span class="btn" data-act="home"' + (can ? '' : ' disabled') + '>HOME</span>') + '</div>';
-        setHtml('selp', h); return;
-    }
-    var col = ROLES[o.role].color;
-    h = '<div class="hd"><b>' + CLASSES[o.cls].name.toUpperCase() + '</b><span class="chip" style="border-color:' + col + ';color:' + col + '">' + ROLES[o.role].name + '</span>' + hull + close + '</div>';
-    h += '<div class="says">' + o.doing + '</div>';
-    h += '<div class="row"><span class="' + (can ? 'ok' : o.slaved ? 'warn' : 'bad') + '">' + (can ? 'IN LINK &mdash; tap the sea to send it' : o.slaved ? 'Follows its mothership&rsquo;s strategy' : o.why + ' &mdash; on its own') + '</span>' +
-        (o.slaved ? '' : '<span class="btn" data-act="recall"' + (can ? '' : ' disabled') + '>RECALL</span>') + '</div>';
-    setHtml('selp', h);
-};
-//  One line of coaching until the first ships have sailed.
+//  One line of coaching until the base is running.
 PlayState.prototype.renderHint = function(game) {
-    var sim = game.sim, dm = sim.dockedMother(), h = '';
+    var sim = game.sim, b = sim.base, dm = sim.dockedMother(), h = '', crews = 0, i;
+    for (i = 0; i < sim.units.length; i++) { if (sim.units[i].crew) { crews++; } }
     if (sim.phase < 1) {
-        if (sim.stats.mother.built === 0) { h = 'Tap <b>MOTHERSHIP</b> in the dock to build one at the pier'; }
-        else if (dm && dm.cargoList.length + dm.loading.length < CLASSES.mother.cargoN) { h = '<b>Drag drones</b> from the dock onto the mothership &mdash; ' + (dm.cargoList.length + dm.loading.length) + ' of 6 aboard'; }
-        else if (dm) { h = 'Tap the mothership, pick a strategy, then <b>tap the sea</b> to send it'; }
+        if (!sim.stock.length && !b.factory.queue.length && !crews) { h = 'Tap <b>FACTORY</b> and build a few drones'; }
+        else if (!b.camp.lv) { h = 'Open the <b>BOOT CAMP</b>: drones need an operator to lead them'; }
+        else if (!b.camp.ready.length && !b.camp.queue.length && !crews) { h = '<b>BOOT CAMP</b>: train an operator'; }
+        else if (b.camp.ready.length && sim.stock.length && !crews) { h = '<b>BOOT CAMP</b>: launch a flight, then tap the sea'; }
+        else if (crews && !b.academy.lv) { h = 'Open the <b>ACADEMY</b>: an officer&rsquo;s mothership takes flights beyond your link'; }
+        else if (b.academy.lv && b.academy.ready.length && !dm && sim.stats.mother.built === 0) { h = '<b>ACADEMY</b>: commission a mothership'; }
+        else if (dm && dm.cargoList.length + dm.loading.length === 0) { h = '<b>BOOT CAMP</b>: launch flights to board the mothership'; }
+        else if (dm && dm.cargoList.length) { h = 'Tap the mothership, pick a strategy, then <b>tap the sea</b>'; }
     }
-    if (this.paused) { h = 'PAUSED &mdash; you can still build, load and give orders'; }
+    if (this.paused) { h = 'PAUSED &mdash; you can still build, train and give orders'; }
     $('hint').classList.toggle('hidden', !h);
     setHtml('hint', h);
     var l = '';
-    for (var i = 0; i < this.logLines.length; i++) { if (this.logLines[i].t > 0) { l += '<div class="' + this.logLines[i].cls + '">' + this.logLines[i].text + '</div>'; } }
+    for (i = 0; i < this.logLines.length; i++) { if (this.logLines[i].t > 0) { l += '<div class="' + this.logLines[i].cls + '">' + this.logLines[i].text + '</div>'; } }
     setHtml('log', l);
 };
 PlayState.prototype.renderAll = function(game) {
-    this.renderDock(game); this.renderRoles(game); this.renderTop(game); this.renderSel(game); this.renderHint(game);
+    this.renderDock(game); this.renderTop(game); this.renderPanel(game); this.renderHint(game);
     drawGoal(game.sim.landed);
 };
 
@@ -2126,7 +2485,6 @@ PlayState.prototype.update = function(game, dt) {
         var t = dt * this.speed;
         while (t > 0 && !sim.over) { var st = Math.min(t, 0.05); sim.step(st); t -= st; }
     }
-    //  What just happened: effects, log, banners.
     for (i = 0; i < sim.events.length; i++) {
         e = sim.events[i];
         if (e.k === 'msg') { this.say(e.text, e.bad ? 'bad' : e.good ? 'ok' : ''); }
@@ -2143,10 +2501,9 @@ PlayState.prototype.update = function(game, dt) {
         var px = (game.keys[68] || game.keys[39] ? 1 : 0) - (game.keys[65] || game.keys[37] ? 1 : 0), pz = (game.keys[87] || game.keys[38] ? 1 : 0) - (game.keys[83] || game.keys[40] ? 1 : 0);
         if (px || pz) { v.panBy(-px * 600 * dt, pz * 500 * dt); }
         var placing = null, drag = null, d = this.drag;
-        if (d && d.kind === 'dock' && d.g) { placing = { cls: d.cls, role: sim.templates[d.cls].role, x: d.g.x, z: d.g.z }; drag = { fx: d.cls === 'mother' ? BERTH.x : DOOR.x, fz: d.cls === 'mother' ? BERTH.z : DOOR.z, x: d.g.x, z: d.g.z }; }
-        if (d && d.kind === 'unit' && d.g && !d.unit.dead) { placing = { cls: d.unit.cls, role: d.unit.role, x: d.g.x, z: d.g.z }; drag = { fx: d.unit.x, fz: d.unit.z, x: d.g.x, z: d.g.z }; }
+        if (d && d.g && !d.unit.dead) { placing = { cls: d.unit.cls, role: d.unit.role, x: d.g.x, z: d.g.z }; drag = { fx: d.unit.x, fz: d.unit.z, x: d.g.x, z: d.g.z }; }
         v.setWeather(sim.weather); v.setDay(sim.dayFrac());
-        v.sync(sim.units, sim.enemies, { dt: dt, time: sim.time, weather: sim.weather, sel: (this.sel && !this.sel.side && !this.sel.dead) ? this.sel : null, placing: placing, drag: drag });
+        v.sync(sim.units, sim.enemies, { dt: dt, time: sim.time, weather: sim.weather, sel: (this.sel && !this.sel.side && !this.sel.dead) ? this.sel : null, placing: placing, drag: drag, sim: sim });
     }
     this.hudT -= dt;
     if (this.hudT <= 0) { this.hudT = 0.2; this.renderAll(game); }
@@ -2160,55 +2517,56 @@ PlayState.prototype.unitAt = function(game, px, py, list, r) {
         var o = list[i];
         if (o.side && o.det < 1) { continue; }
         s = v.toScreen(o);
-        d = Math.sqrt((s.x - px) * (s.x - px) + (s.y - py) * (s.y - py)) / ((o.big || o.et === 'lhd') ? 2 : 1);
+        d = Math.sqrt((s.x - px) * (s.x - px) + (s.y - py) * (s.y - py)) / ((o.big || o.et === 'lhd') ? 2 : o.crew ? 1.3 : 1);
         if (!s.behind && d < r && d < bd) { bd = d; best = o; }
     }
     return best;
 };
-//  A tap: select a piece, or send the selected piece there.
+//  A tap: open a building, select a piece, or send the selected piece there.
 PlayState.prototype.click = function(game, px, py) {
-    var sim = game.sim, v = game.view, R = 34 * (game.hudScale || 1), g = v.pick(px, py), u;
-    if (this.rolesFor) { this.rolesFor = null; this.renderRoles(game); return; }
+    var sim = game.sim, v = game.view, R = 34 * (game.hudScale || 1), g = v.pick(px, py), u, key;
     u = this.unitAt(game, px, py, sim.units, R);
-    if (u) { this.sel = u.leader || u; this.renderAll(game); return; }
+    if (u) { this.sel = u.leader || u; this.panel = null; this.renderAll(game); return; }
+    if (g && g.z < -95) {
+        for (key in BUILDINGS) { if (Math.abs(g.x - BUILDINGS[key].x) < 62 && Math.abs(g.z - BUILDINGS[key].z) < 60) { this.panel = null; this.act(game, 'panel', key === 'yard' ? 'factory' : key); return; } }
+    }
+    if (this.panel) { this.panel = null; this.renderAll(game); return; }
     if (this.sel && !this.sel.side && !this.sel.dead) {
         if (!g) { return; }
-        if (sim.order(this.sel, g.x, g.z)) { this.say(this.sel.toPier ? 'Mothership: coming home to the pier.' : CLASSES[this.sel.cls].name + ': on its way.', 'ok'); }
+        if (sim.order(this.sel, g.x, g.z)) { this.say(this.sel.toPier ? 'Mothership: coming home to the pier.' : who(this.sel.crew) + ': on the way.', 'ok'); }
         else { this.say('No orders possible: ' + this.sel.why + '.', 'bad'); }
         this.renderAll(game); return;
     }
     this.sel = this.unitAt(game, px, py, sim.enemies, R);
     this.renderAll(game);
 };
-//  A drag that starts on one of your pieces steers that piece instead of the camera.
+//  A drag that starts on one of your crewed pieces steers it instead of the camera.
 PlayState.prototype.dragStart = function(game, px, py) {
     var u = this.unitAt(game, px, py, game.sim.units, 30 * (game.hudScale || 1));
+    if (u && u.leader) { u = u.leader; }
     if (!u || !game.sim.canCommand(u)) { return false; }
-    this.drag = { kind: 'unit', unit: u, g: null, ship: null, live: false };
+    this.drag = { unit: u, g: null, live: false };
     return true;
 };
 PlayState.prototype.dragMove = function(game, px, py) {
     var d = this.drag, g = game.view.pick(px, py);
-    if (!d || d.kind !== 'unit') { return; }
-    if (!d.live) { d.live = true; this.sel = d.unit; }
-    d.ship = (!d.unit.big && !d.unit.docked) ? this.overShip(game, px, py, d.unit.cls) : null;
-    d.g = g ? (d.ship ? { x: d.ship.x, z: d.ship.z } : game.sim.clampDest(d.unit.cls, g.x, g.z)) : null;
+    if (!d) { return; }
+    if (!d.live) { d.live = true; this.sel = d.unit; this.panel = null; }
+    d.g = g ? game.sim.clampDest(d.unit.cls, g.x, g.z) : null;
 };
 PlayState.prototype.dragEnd = function(game, px, py) {
     var d = this.drag, sim = game.sim;
     this.drag = null;
-    if (!d || d.kind !== 'unit' || !d.live) { return; }
-    if (d.ship) { if (sim.embark(d.unit, d.ship)) { this.sel = d.ship; this.say('The dock crew is carrying it aboard.', 'ok'); } }
-    else if (d.g) { if (!sim.order(d.unit, d.g.x, d.g.z)) { this.say('No orders possible: ' + d.unit.why + '.', 'bad'); } }
+    if (!d || !d.live) { return; }
+    if (d.g && !sim.order(d.unit, d.g.x, d.g.z)) { this.say('No orders possible: ' + d.unit.why + '.', 'bad'); }
     this.renderAll(game);
 };
-PlayState.prototype.dragCancel = function() { if (this.drag && this.drag.kind === 'unit') { this.drag = null; } };
+PlayState.prototype.dragCancel = function() { this.drag = null; };
 PlayState.prototype.keyDown = function(game, k) {
     if (k === 32) { this.act(game, 'pause'); }
-    else if (k === 27) { this.sel = null; this.rolesFor = null; this.renderAll(game); }
-    else if (k >= 49 && k <= 53) { this.tapDock(game, CLASS_ORDER[k - 49]); }
+    else if (k === 27) { this.sel = null; this.panel = null; this.renderAll(game); }
+    else if (k >= 49 && k <= 51) { this.act(game, 'panel', BUILDING_ORDER[k - 49]); }
     else if (k === 70) { this.act(game, 'speed'); }
-    else if (k === 82) { this.act(game, 'recall'); }
     else if (k === 66) { this.act(game, 'view', 'base'); }
     else if (k === 86) { this.act(game, 'view', 'strait'); }
 };
@@ -2426,18 +2784,26 @@ window.addEventListener('keyup', function(e) { delete game.keys[e.which || e.key
 if (DEBUG_START && game.view) {
     var ps = new PlayState();
     game.moveToState(ps);
-    var ds = game.sim, dbgM = ds.buy('mother'), dbgL = ['sub', 'sea', 'air', 'sub', 'sea', 'air'], dbgI;
-    ds.credits = 900;
-    for (dbgI = 0; dbgI < 6; dbgI++) { ds.load(dbgM, dbgL[dbgI]); }
-    ps.sel = dbgM;
-    if (DEBUG_START === 'play') { ds.buy('sea'); ds.buy('land'); while (ds.time < 3.2) { ds.step(0.05); } ds.buy('air'); ds.buy('sub'); while (ds.time < 3.6) { ds.step(0.05); } ds.events.length = 0; }
+    var ds = game.sim, dbgI, dbgL = ['sub', 'sub', 'sub', 'sea', 'sea', 'sea', 'air', 'air', 'air', 'land', 'land', 'land', 'sub', 'sea'];
+    ds.credits = 900; ds.base.camp.lv = 1; ds.base.academy.lv = 1; ds.base.yard.lv = 2;
+    for (dbgI = 0; dbgI < dbgL.length; dbgI++) { ds.stock.push({ cls: dbgL[dbgI], tpl: JSON.parse(JSON.stringify(ds.templates[dbgL[dbgI]])) }); }
+    for (dbgI = 0; dbgI < 5; dbgI++) { ds.base.camp.ready.push(ds.newBunny('operator')); }
+    ds.base.academy.ready.push(ds.newBunny('officer')); ds.base.academy.ready.push(ds.newBunny('officer'));
+    var dbgM = ds.commission();
+    ds.launchFlight('opSub', true);
+    var dbgF = ds.launchFlight('opSea', false), dbgT = ds.launchFlight('opLand', false);
+    ds.train('operator'); ds.train('operator'); ds.train('officer'); ds.queueDrone('air'); ds.queueDrone('sub');
+    if (DEBUG_START === 'play') { while (ds.time < 1.6) { ds.step(0.05); } ds.events.length = 0; ps.panel = 'camp'; }
+    else if (DEBUG_START === 'ship') { ds.launchFlight('opAir', true); while (ds.time < 6) { ds.step(0.05); } ds.events.length = 0; ps.sel = dbgM; game.view.goTo(0.22, 80, 60); }
     else {
-        while (ds.time < 9) { ds.step(0.05); }
+        ds.launchFlight('opAir', true);
+        while (ds.time < 8) { ds.step(0.05); }
         dbgM.strategy = DEBUG_START === 'raid' ? 'attack' : 'screen'; ds.order(dbgM, 200, DEBUG_START === 'raid' ? 5000 : 1300);
-        var dbgN = ds.buy('mother'); ds.load(dbgN, 'sub'); ds.load(dbgN, 'sub'); ds.buy('land'); ds.buy('land');
-        var until = DEBUG_START === 'late' ? 150 : DEBUG_START === 'raid' ? 175 : 4000;
+        ds.order(dbgF, -400, 800);
+        var until = DEBUG_START === 'late' ? 190 : DEBUG_START === 'raid' ? 175 : 4000;
         while (ds.time < until && !ds.over) { ds.step(0.05); ds.events.length = 0; }
-        if (DEBUG_START === 'late') { game.view.goTo(0.72, 100, 1100); }
+        ps.sel = dbgM;
+        if (DEBUG_START === 'late') { game.view.goTo(0.5, 100, 1300); }
         if (DEBUG_START === 'raid') { game.view.goTo(0.6, 200, 4500); }
         if (DEBUG_START === 'report' || DEBUG_START === 'replay') {
             if (!ds.over) { ds.finish('lose', 'Debug run ended.'); }
