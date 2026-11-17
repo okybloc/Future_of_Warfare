@@ -1961,7 +1961,7 @@ View3D.prototype.setDay = function(f) { this.day = clamp(f, 0, 1); };
 
 View3D.prototype.placeCam = function() {
     var z = this.zoom, d = 150 * Math.pow(5600 / 150, z), pitch = (9 + 46 * Math.pow(z, 0.8)) * Math.PI / 180;
-    var k = clamp((z - 0.3) / 0.2, 0, 1); k = 1 - k * k * (3 - 2 * k);          //  1 = yard view, 0 = strait view
+    var k = clamp((z - 0.42) / 0.2, 0, 1); k = 1 - k * k * (3 - 2 * k);          //  1 = yard view, 0 = strait view
     var dx = -0.34 * k, dy = 0.74 * k + Math.sin(pitch) * (1 - k), dz = -0.6 * k - Math.cos(pitch) * (1 - k), dl = Math.sqrt(dx * dx + dy * dy + dz * dz);
     this.target.x = clamp(this.target.x, WORLD.x0, WORLD.x1); this.target.z = clamp(this.target.z, -300, WORLD.far - 400);
     this.cam.position.set(this.target.x + dx / dl * d, dy / dl * d + 6, this.target.z + dz / dl * d);
@@ -2520,7 +2520,7 @@ function who(b) { return (b.rank === 'officer' ? 'Officer ' : 'Operator ') + b.n
 /* ------------------------------------------------------------------
     Welcome
    ------------------------------------------------------------------ */
-var BASE_VIEW = [0.2, BASE.x - 150, BASE.z - 45];
+var BASE_VIEW = [0.33, BASE.x - 205, BASE.z - 60];
 function WelcomeState() {}
 WelcomeState.prototype.enter = function(game) {
     $('hud').classList.add('hidden'); $('replaybar').classList.add('hidden');
@@ -2665,12 +2665,12 @@ PlayState.prototype.refreshTags = function(game) {
 };
 //  Every frame: pin each tag, pop-up and the jam warning to its spot in the world. Tags only show while you look at the base.
 PlayState.prototype.placeTags = function(game, dt) {
-    var v = game.view, ui = game.hudScale || 1, k, L = game.sim.line, show = v.zoom < 0.4, i;
+    var v = game.view, ui = game.hudScale || 1, k, L = game.sim.line, show = v.zoom < 0.5, i;
     for (k in this.tags) {
         var el = this.tags[k], d = this.tagData && this.tagData[k];
         if (!d || !show) { el.style.display = 'none'; continue; }
         var s = v.toScreen({ x: d.x, z: d.z, dom: 'land' });
-        if (s.behind || s.x < -60 || s.x > v.w + 60 || s.y < 40 || s.y > v.h + 30) { el.style.display = 'none'; continue; }
+        if (s.behind || s.x < -60 || s.x > v.w + 60 || s.y < 96 * ui || s.y > v.h - 60 * ui) { el.style.display = 'none'; continue; }
         el.style.display = 'block';
         el.style.transform = 'translate(' + (s.x / ui - (el.offsetWidth || 90) / 2) + 'px,' + (s.y / ui - (el.offsetHeight || 40) / 2) + 'px)';
     }
