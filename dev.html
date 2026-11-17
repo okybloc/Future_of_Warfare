@@ -499,11 +499,11 @@ function lineZ(mz) { return LINE.OZ - mz * LINE.K; }
 var KITS_PER_DRONE = 12, HALL_TIME = 7.5;      //  kits per drone, and the fastest the assembly hall can turn one out
 var UP = {
     speed:  { name: 'Belt speed',     base: 40, mult: 1.9, max: 14, at: [-13, 0, 4.2],  fx: function(l) { return (1 + 0.15 * l).toFixed(2) + 'x'; } },
-    slices: { name: 'Cutter',         base: 30, mult: 1.9, max: 9,  at: [-8, 0, 4.6],   fx: function(l) { return (6 + 2 * l) + ' sections'; } },
+    slices: { name: 'Cutter',         base: 30, mult: 1.9, max: 9,  at: [-8, 0, -5.2],   fx: function(l) { return (6 + 2 * l) + ' sections'; } },
     dice:   { name: 'Fitter',         base: 60, mult: 2.2, max: 8,  at: [-1.5, 0, 4.6], fx: function(l) { return (2 + 2 * l) + ' kits each'; } },
     bay:    { name: 'Parts dock',     base: 50, mult: 1.8, max: 10, at: [15.8, 0, -1],  fx: function(l) { return 'holds ' + (300 + 250 * l); } },
-    trucks: { name: 'Hire a driver',  base: 35, mult: 1.9, max: 11, at: [-6, 0, 13.6],  fx: function(l) { return (1 + l) + ' trucks'; } },
-    load:   { name: 'Truck size',     base: 45, mult: 1.8, max: 12, at: [3, 0, 13.6],   fx: function(l) { return 'carries ' + (20 + 15 * l); } },
+    trucks: { name: 'Hire a driver',  base: 35, mult: 1.9, max: 11, at: [-11, 0, 13.6],  fx: function(l) { return (1 + l) + ' trucks'; } },
+    load:   { name: 'Truck size',     base: 45, mult: 1.8, max: 12, at: [4, 0, 13.6],   fx: function(l) { return 'carries ' + (20 + 15 * l); } },
     value:  { name: 'Contract price', base: 80, mult: 2.3, max: 15, at: [20, 0, 14],    fx: function(l) { return '$' + (1 + l) + ' a kit'; } }
 };
 var UP_ORDER = ['speed', 'slices', 'dice', 'bay', 'trucks', 'load', 'value'];
@@ -2616,7 +2616,7 @@ PlayState.prototype.tagList = function(game) {
         var u = UP[k], maxed = L.lv[k] >= u.max, c = L.cost(k);
         tag(k, lineX(u.at[0]), lineZ(u.at[2]), u.name, u.fx(L.lv[k]) + (maxed ? '' : ' → ' + u.fx(L.lv[k] + 1)), maxed ? 'MAX' : '$' + fmt(c), maxed ? 'max' : st(c), function() { L.buy(k); });
     });
-    tag('mix', lineX(29.5), lineZ(14), 'Drone mix', MIXES[L.mix].name, 'CHANGE', 'ok', function() { L.mix = (L.mix + 1) % MIXES.length; L.seqI = 0; self.say('The hall now builds: ' + MIXES[L.mix].seq.map(function(c) { return SHORT[c]; }).join(', ') + '.', 'ok'); });
+    tag('mix', lineX(31), lineZ(15.5), 'Drone mix', MIXES[L.mix].name, 'CHANGE', 'ok', function() { L.mix = (L.mix + 1) % MIXES.length; L.seqI = 0; self.say('The hall now builds: ' + MIXES[L.mix].seq.map(function(c) { return SHORT[c]; }).join(', ') + '.', 'ok'); });
     var yc = sim.upgradeCost('yard'), ym = b.yard.lv >= BUILDINGS.yard.max;
     tag('yard', Y.x, Y.z - 68, 'Drone yard', 'holds ' + yardCap(b.yard.lv) + (ym ? '' : ' → ' + yardCap(b.yard.lv + 1)), ym ? 'MAX' : '$' + yc, ym ? 'max' : st(yc), function() { sim.upgrade('yard'); });
     function bld(key, B, what, nextTxt) {
@@ -2665,14 +2665,14 @@ PlayState.prototype.refreshTags = function(game) {
 };
 //  Every frame: pin each tag, pop-up and the jam warning to its spot in the world. Tags only show while you look at the base.
 PlayState.prototype.placeTags = function(game, dt) {
-    var v = game.view, ui = game.hudScale || 1, k, L = game.sim.line, show = v.zoom < 0.5, i;
+    var v = game.view, ui = game.hudScale || 1, k, L = game.sim.line, show = v.zoom < 0.5, i, sc = clamp(0.24 / Math.max(0.05, v.zoom), 0.62, 1);
     for (k in this.tags) {
         var el = this.tags[k], d = this.tagData && this.tagData[k];
         if (!d || !show) { el.style.display = 'none'; continue; }
         var s = v.toScreen({ x: d.x, z: d.z, dom: 'land' });
         if (s.behind || s.x < -60 || s.x > v.w + 60 || s.y < 96 * ui || s.y > v.h - 60 * ui) { el.style.display = 'none'; continue; }
         el.style.display = 'block';
-        el.style.transform = 'translate(' + (s.x / ui - (el.offsetWidth || 90) / 2) + 'px,' + (s.y / ui - (el.offsetHeight || 40) / 2) + 'px)';
+        el.style.transform = 'translate(' + (s.x / ui - (el.offsetWidth || 90) / 2) + 'px,' + (s.y / ui - (el.offsetHeight || 40) / 2) + 'px) scale(' + sc.toFixed(2) + ')';
     }
     var w = $('warn'); w.style.display = (L.jam && show) ? 'block' : 'none';
     if (L.jam && show) { var p = v.toScreen({ x: lineX(LINE.BAY_X0 + 4.5), z: lineZ(0), dom: 'land' }); w.style.transform = 'translate(' + p.x / ui + 'px,' + (p.y / ui - 40) + 'px)'; }
